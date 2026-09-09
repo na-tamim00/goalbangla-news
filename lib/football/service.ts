@@ -27,7 +27,12 @@ class FootballDataProvider implements FootballService {
         const cached = this.getFromCache<Fixture[]>('live_scores');
         if (cached) return cached;
 
-        const res = await fetch(`https://${this.rapidApiHost}/v3/fixtures?live=all`, {
+        const isFreeApi = this.rapidApiHost.includes('free-api-live-football-data');
+        const endpoint = isFreeApi
+          ? `https://${this.rapidApiHost}/football-current-live`
+          : `https://${this.rapidApiHost}/v3/fixtures?live=all`;
+
+        const res = await fetch(endpoint, {
           headers: {
             'x-rapidapi-key': this.rapidApiKey,
             'x-rapidapi-host': this.rapidApiHost,
@@ -37,35 +42,43 @@ class FootballDataProvider implements FootballService {
 
         if (res.ok) {
           const json = await res.json();
-          if (json.response && json.response.length > 0) {
-            const mapped: Fixture[] = json.response.map((item: any) => ({
-              id: String(item.fixture.id),
-              competition: item.league.name,
-              leagueId: String(item.league.id),
-              homeTeam: {
-                id: String(item.teams.home.id),
-                name: item.teams.home.name,
-                shortName: item.teams.home.name.substring(0, 3).toUpperCase(),
-                logo: item.teams.home.logo,
-              },
-              awayTeam: {
-                id: String(item.teams.away.id),
-                name: item.teams.away.name,
-                shortName: item.teams.away.name.substring(0, 3).toUpperCase(),
-                logo: item.teams.away.logo,
-              },
-              kickoffTime: item.fixture.date,
-              status: item.fixture.status.short === '1H' || item.fixture.status.short === '2H' ? 'LIVE' : 'FINISHED',
-              minute: item.fixture.status.elapsed || 45,
-              homeScore: item.goals.home ?? 0,
-              awayScore: item.goals.away ?? 0,
-            }));
+          const items = json.response || json.data || (Array.isArray(json) ? json : null);
+          if (items && Array.isArray(items) && items.length > 0) {
+            const mapped: Fixture[] = items.map((item: any, idx: number) => {
+              const home = item.teams?.home || item.homeTeam || item.home || {};
+              const away = item.teams?.away || item.awayTeam || item.away || {};
+              const fixture = item.fixture || item;
+              const goals = item.goals || item.score || {};
+
+              return {
+                id: String(fixture.id || idx + 1),
+                competition: item.league?.name || item.competition || 'Live Match',
+                leagueId: String(item.league?.id || 'live'),
+                homeTeam: {
+                  id: String(home.id || 'home'),
+                  name: home.name || 'Home Team',
+                  shortName: (home.name || 'HOM').substring(0, 3).toUpperCase(),
+                  logo: home.logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=120&q=80',
+                },
+                awayTeam: {
+                  id: String(away.id || 'away'),
+                  name: away.name || 'Away Team',
+                  shortName: (away.name || 'AWY').substring(0, 3).toUpperCase(),
+                  logo: away.logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=120&q=80',
+                },
+                kickoffTime: fixture.date || new Date().toISOString(),
+                status: 'LIVE',
+                minute: fixture.status?.elapsed || item.minute || 45,
+                homeScore: goals.home ?? item.homeScore ?? 0,
+                awayScore: goals.away ?? item.awayScore ?? 0,
+              };
+            });
             this.setCache('live_scores', mapped);
             return mapped;
           }
         }
       } catch (err) {
-        console.warn('API-Football fetch failed, falling back to mock provider:', err);
+        console.warn('API fetch failed, falling back to mock provider:', err);
       }
     }
 
