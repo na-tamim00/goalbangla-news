@@ -39,10 +39,8 @@ This guide walks you through deploying **GoalBangla** with:
 In your project directory (`C:\Users\nurul\.gemini\antigravity\scratch\goalbangla`):
 
 ```bash
-git add .
-git commit -m "feat: configure GoalBangla for Netlify frontend and Vercel backend"
-git branch -M main
-git remote add origin https://github.com/<YOUR_GITHUB_USERNAME>/goalbangla.git
+# Repo is already linked and pushed to:
+# https://github.com/na-tamim00/goalbangla-news.git
 git push -u origin main
 ```
 
@@ -52,7 +50,7 @@ git push -u origin main
 
 1. Log into your [Vercel Dashboard](https://vercel.com/dashboard).
 2. Click **"Add New..."** > **"Project"**.
-3. Import your `goalbangla` GitHub repository.
+3. Import your **`goalbangla-news`** GitHub repository.
 4. Name the project: `goalbangla-backend` (or `goalbangla-api`).
 5. Framework Preset: **Next.js** (detected automatically).
 6. Under **Environment Variables**, add:
