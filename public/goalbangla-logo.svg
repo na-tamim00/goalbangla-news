@@ -1,0 +1,78 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 100" width="100%" height="100%" fill="none">
+  <defs>
+    <linearGradient id="redGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF2E56"/>
+      <stop offset="100%" stop-color="#BE123C"/>
+    </linearGradient>
+    <linearGradient id="netGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E11D48" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#18181B" stop-opacity="0.95"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#E11D48" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Football in Goal Net Mark -->
+  <g transform="translate(10, 10)">
+    <!-- Goal Frame (Slanted Athletic Post) -->
+    <path d="M5 80 L35 15 L78 15 L70 80 Z" fill="#18181B" stroke="#27272A" stroke-width="2"/>
+    <path d="M78 15 L86 15 L76 80 L68 80 Z" fill="url(#redGrad)"/>
+    <line x1="35" y1="15" x2="86" y2="15" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+    <line x1="86" y1="15" x2="76" y2="80" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- Goal Net Mesh Behind Ball -->
+    <g stroke="#E11D48" stroke-width="1.2" opacity="0.6" stroke-linecap="round">
+      <line x1="42" y1="26" x2="68" y2="80"/>
+      <line x1="52" y1="20" x2="74" y2="70"/>
+      <line x1="62" y1="17" x2="77" y2="55"/>
+      <line x1="38" y1="35" x2="76" y2="28"/>
+      <line x1="42" y1="52" x2="74" y2="44"/>
+      <line x1="46" y1="70" x2="72" y2="62"/>
+    </g>
+
+    <!-- Speed / Impact Waves -->
+    <path d="M12 48 Q 24 45 32 49" stroke="#E11D48" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+    <path d="M8 58 Q 22 55 30 60" stroke="#FF2E56" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+    <path d="M16 38 Q 26 36 34 40" stroke="#BE123C" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+
+    <!-- Football (Bulging into the Net) -->
+    <circle cx="48" cy="48" r="24" fill="#FFFFFF" stroke="#09090B" stroke-width="2.5" filter="url(#glow)"/>
+    <!-- Classic Football Pentagons -->
+    <!-- Center pentagon -->
+    <polygon points="48,40 54,45 52,52 44,52 42,45" fill="#18181B"/>
+    <!-- Radiating seams -->
+    <line x1="48" y1="40" x2="48" y2="30" stroke="#18181B" stroke-width="2"/>
+    <line x1="54" y1="45" x2="64" y2="44" stroke="#18181B" stroke-width="2"/>
+    <line x1="52" y1="52" x2="59" y2="62" stroke="#18181B" stroke-width="2"/>
+    <line x1="44" y1="52" x2="37" y2="62" stroke="#18181B" stroke-width="2"/>
+    <line x1="42" y1="45" x2="32" y2="44" stroke="#18181B" stroke-width="2"/>
+    <!-- Corner dark patches -->
+    <path d="M43 25 Q48 24 53 25 L50 30 L46 30 Z" fill="#E11D48"/>
+    <path d="M68 40 Q71 44 71 50 L64 47 L64 42 Z" fill="#18181B"/>
+    <path d="M60 67 Q55 70 50 71 L53 64 L58 64 Z" fill="#18181B"/>
+    <path d="M26 42 Q25 47 26 52 L32 48 L32 44 Z" fill="#18181B"/>
+  </g>
+
+  <!-- Typography: GoalBangla -->
+  <g transform="translate(108, 20)">
+    <!-- "Goal" in Sports Red/White -->
+    <text x="0" y="46" font-family="'Oswald', 'Barlow Condensed', 'Arial Black', sans-serif" font-weight="900" font-size="46" letter-spacing="0.5" fill="#FFFFFF" stroke="#09090B" stroke-width="1.5" paint-order="stroke fill">
+      GOAL
+    </text>
+    <!-- "Bangla" in Vibrant Crimson -->
+    <text x="116" y="46" font-family="'Oswald', 'Barlow Condensed', 'Arial Black', sans-serif" font-weight="900" font-size="46" letter-spacing="0.5" fill="url(#redGrad)">
+      BANGLA
+    </text>
+
+    <!-- Subtitle / Tagline in Bengali & English -->
+    <rect x="2" y="56" width="338" height="18" rx="3" fill="#18181B" stroke="#27272A" stroke-width="1"/>
+    <circle cx="10" cy="65" r="3.5" fill="#E11D48"/>
+    <text x="20" y="69" font-family="'Noto Sans Bengali', 'Hind Siliguri', sans-serif" font-weight="700" font-size="10.5" fill="#E4E4E7" letter-spacing="0.5">
+      ফুটবলের নির্ভীক কণ্ঠস্বর
+    </text>
+    <text x="160" y="68" font-family="'Oswald', sans-serif" font-weight="700" font-size="9.5" fill="#A1A1AA" letter-spacing="1.5">
+      • FOOTBALL'S TRUSTED VOICE
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,146 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  CONTRIBUTOR
+}
+
+enum PostType {
+  ARTICLE
+  VIDEO
+  AUDIO
+  GALLERY
+}
+
+enum PostStatus {
+  DRAFT
+  IN_REVIEW
+  SCHEDULED
+  PUBLISHED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         Role      @default(CONTRIBUTOR)
+  avatarUrl    String?
+  posts        Post[]
+  media        Media[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Post {
+  id                 String            @id @default(cuid())
+  slug               String            @unique
+  type               PostType          @default(ARTICLE)
+  status             PostStatus        @default(DRAFT)
+  category           String
+  leagueTag          String
+  featuredImage      String?
+  videoUrl           String?
+  videoTranscript    String?
+  audioUrl           String?
+  audioShowNotes     String?
+  galleryImages      Json?
+  
+  authorId           String
+  author             User              @relation(fields: [authorId], references: [id])
+  
+  scheduledPublishAt DateTime?
+  publishedAt        DateTime?
+  viewCount          Int               @default(0)
+  
+  translations       PostTranslation[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([category])
+  @@index([leagueTag])
+  @@index([status])
+}
+
+model PostTranslation {
+  id             String   @id @default(cuid())
+  postId         String
+  post           Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  language       String
+  title          String
+  excerpt        String?
+  content        String
+  seoTitle       String?
+  seoDescription String?
+  tags           String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([postId, language])
+  @@index([language])
+}
+
+model Match {
+  id          String   @id @default(cuid())
+  externalId  String?  @unique
+  competition String
+  leagueId    String
+  homeTeam    String
+  awayTeam    String
+  homeLogo    String?
+  awayLogo    String?
+  kickoffTime DateTime
+  status      String
+  minute      Int?
+  homeScore   Int?
+  awayScore   Int?
+  stats       Json?
+  lineups     Json?
+  events      Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([leagueId])
+  @@index([status])
+}
+
+model Standing {
+  id           String   @id @default(cuid())
+  leagueId     String
+  leagueName   String
+  season       String   @default("2025/26")
+  rank         Int
+  teamName     String
+  teamLogo     String?
+  played       Int      @default(0)
+  won          Int      @default(0)
+  drawn        Int      @default(0)
+  lost         Int      @default(0)
+  goalsFor     Int      @default(0)
+  goalsAgainst Int      @default(0)
+  points       Int      @default(0)
+  form         String?
+  updatedAt    DateTime @updatedAt
+
+  @@unique([leagueId, season, rank])
+  @@index([leagueId])
+}
+
+model Media {
+  id           String   @id @default(cuid())
+  filename     String
+  url          String
+  mimeType     String
+  sizeBytes    Int
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+}

@@ -1,0 +1,83 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#09090B"/>
+      <stop offset="60%" stop-color="#18181B"/>
+      <stop offset="100%" stop-color="#27272A"/>
+    </linearGradient>
+    <linearGradient id="redGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF2E56"/>
+      <stop offset="100%" stop-color="#BE123C"/>
+    </linearGradient>
+    <radialGradient id="stadiumLight" cx="80%" cy="20%" r="60%">
+      <stop offset="0%" stop-color="#E11D48" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#09090B" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background with Stadium Spotlight -->
+  <rect width="1200" height="630" fill="url(#bgGrad)"/>
+  <rect width="1200" height="630" fill="url(#stadiumLight)"/>
+
+  <!-- Subtle Pitch / Net Lines -->
+  <g stroke="#E11D48" stroke-width="1.5" opacity="0.15">
+    <line x1="0" y1="120" x2="1200" y2="120"/>
+    <line x1="0" y1="315" x2="1200" y2="315"/>
+    <line x1="0" y1="510" x2="1200" y2="510"/>
+    <circle cx="600" cy="315" r="180" fill="none"/>
+  </g>
+
+  <!-- Top Ribbon -->
+  <rect x="80" y="70" width="220" height="38" rx="6" fill="#E11D48"/>
+  <text x="190" y="95" font-family="'Oswald', sans-serif" font-weight="800" font-size="18" fill="#FFFFFF" text-anchor="middle" letter-spacing="2">
+    ★ FOOTBALL NEWSROOM
+  </text>
+
+  <!-- Giant Brand Wordmark -->
+  <g transform="translate(80, 150)">
+    <!-- Football Net Emblem -->
+    <g transform="scale(1.5)">
+      <circle cx="48" cy="48" r="28" fill="#FFFFFF" stroke="#E11D48" stroke-width="3"/>
+      <polygon points="48,38 55,44 53,53 43,53 41,44" fill="#E11D48"/>
+      <line x1="48" y1="38" x2="48" y2="24" stroke="#18181B" stroke-width="2.5"/>
+      <line x1="55" y1="44" x2="67" y2="43" stroke="#18181B" stroke-width="2.5"/>
+      <line x1="53" y1="53" x2="61" y2="65" stroke="#18181B" stroke-width="2.5"/>
+      <line x1="43" y1="53" x2="35" y2="65" stroke="#18181B" stroke-width="2.5"/>
+      <line x1="41" y1="44" x2="29" y2="43" stroke="#18181B" stroke-width="2.5"/>
+    </g>
+
+    <text x="170" y="65" font-family="'Oswald', sans-serif" font-weight="900" font-size="76" fill="#FFFFFF" letter-spacing="1">
+      GOAL
+    </text>
+    <text x="365" y="65" font-family="'Oswald', sans-serif" font-weight="900" font-size="76" fill="url(#redGlow)" letter-spacing="1">
+      BANGLA
+    </text>
+
+    <!-- Subheadline in Bengali -->
+    <text x="0" y="160" font-family="'Noto Sans Bengali', 'Hind Siliguri', sans-serif" font-weight="800" font-size="38" fill="#F43F5E">
+      বাংলায় বিশ্ব ফুটবলের সার্বক্ষণিক রোমাঞ্চ ও আপডেট
+    </text>
+    <!-- Subtitle in English -->
+    <text x="0" y="215" font-family="system-ui, sans-serif" font-weight="500" font-size="24" fill="#A1A1AA">
+      Live Scores • Breaking News • Match Center • Tactical Analysis • Bangladesh Premier League
+    </text>
+  </g>
+
+  <!-- Bottom Badges Bar -->
+  <g transform="translate(80, 480)">
+    <rect x="0" y="0" width="1040" height="70" rx="10" fill="#141519" stroke="#27272A" stroke-width="1.5"/>
+    <circle cx="35" cy="35" r="8" fill="#10B981"/>
+    <text x="55" y="42" font-family="'Oswald', sans-serif" font-weight="700" font-size="20" fill="#E4E4E7">
+      LIVE MATCH CENTER
+    </text>
+
+    <text x="320" y="42" font-family="'Oswald', sans-serif" font-weight="700" font-size="20" fill="#A1A1AA">
+      |   PREMIER LEAGUE   |   LA LIGA   |   BPL   |   CHAMPIONS LEAGUE
+    </text>
+
+    <rect x="910" y="15" width="105" height="40" rx="6" fill="#E11D48"/>
+    <text x="962" y="41" font-family="'Oswald', sans-serif" font-weight="700" font-size="17" fill="#FFFFFF" text-anchor="middle">
+      24/7 LIVE
+    </text>
+  </g>
+</svg>
