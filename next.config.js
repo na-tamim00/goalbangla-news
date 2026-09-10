@@ -12,8 +12,8 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const backendUrl = process.env.BACKEND_VERCEL_URL || process.env.NEXT_PUBLIC_API_URL;
-    if (backendUrl) {
+    const backendUrl = process.env.BACKEND_VERCEL_URL;
+    if (backendUrl && backendUrl.startsWith('http')) {
       const cleanUrl = backendUrl.replace(/\/$/, '');
       return [
         {

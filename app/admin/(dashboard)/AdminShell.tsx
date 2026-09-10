@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { AuthUser } from '@/lib/auth';
+import { AdminUserProvider } from '@/components/AdminUserContext';
 import {
   FileText,
   PlusCircle,
@@ -15,6 +16,7 @@ import {
   Home,
   Menu,
   X,
+  Users,
 } from 'lucide-react';
 
 interface AdminShellProps {
@@ -33,12 +35,13 @@ export default function AdminShell({ user, children }: AdminShellProps) {
   };
 
   const navItems = [
-    { href: '/admin/posts', label: 'All Posts (সকল পোস্ট)', icon: FileText },
-    { href: '/admin/posts/new', label: 'New Post (নতুন পোস্ট)', icon: PlusCircle },
-    { href: '/admin/auto-reports', label: 'Auto Match Reports', icon: Activity },
-    { href: '/admin/media', label: 'Media Library', icon: FolderOpen },
-    { href: '/admin/standings-override', label: 'Standings Override', icon: Trophy },
-  ];
+    { href: '/admin/posts', label: 'All Posts (সকল পোস্ট)', icon: FileText, roles: ['ADMIN', 'EDITOR', 'CONTRIBUTOR'] },
+    { href: '/admin/posts/new', label: 'New Post (নতুন পোস্ট)', icon: PlusCircle, roles: ['ADMIN', 'EDITOR', 'CONTRIBUTOR'] },
+    { href: '/admin/auto-reports', label: 'Auto Match Reports', icon: Activity, roles: ['ADMIN', 'EDITOR'] },
+    { href: '/admin/media', label: 'Media Library', icon: FolderOpen, roles: ['ADMIN', 'EDITOR'] },
+    { href: '/admin/standings-override', label: 'Standings Override', icon: Trophy, roles: ['ADMIN', 'EDITOR'] },
+    { href: '/admin/users', label: 'User Accounts (টিম ও ভূমিকা)', icon: Users, roles: ['ADMIN'] },
+  ].filter((item) => item.roles.includes(user.role));
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col md:flex-row">
@@ -75,7 +78,15 @@ export default function AdminShell({ user, children }: AdminShellProps) {
           </div>
           <div className="flex-1 min-w-0">
             <h4 className="font-bold text-xs text-white truncate">{user.name}</h4>
-            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-brand-600 text-white tracking-wider">
+            <span
+              className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider text-white ${
+                user.role === 'ADMIN'
+                  ? 'bg-rose-600'
+                  : user.role === 'EDITOR'
+                  ? 'bg-emerald-600'
+                  : 'bg-amber-600'
+              }`}
+            >
               {user.role}
             </span>
           </div>
@@ -127,7 +138,7 @@ export default function AdminShell({ user, children }: AdminShellProps) {
 
       {/* Main Panel Content */}
       <main className="flex-1 p-5 sm:p-8 overflow-y-auto max-w-6xl mx-auto w-full">
-        {children}
+        <AdminUserProvider user={user}>{children}</AdminUserProvider>
       </main>
     </div>
   );

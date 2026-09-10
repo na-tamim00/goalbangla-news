@@ -32,3 +32,10 @@ yarn-error.log*
 
 # netlify
 .netlify
+
+# build info
+*.tsbuildinfo
+
+# uploaded media files
+public/uploads/*
+!public/uploads/.gitkeep

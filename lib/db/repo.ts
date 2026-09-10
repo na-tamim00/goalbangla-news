@@ -181,6 +181,26 @@ class DataRepository {
     return user;
   }
 
+  async updateUser(id: string, updates: Partial<UserRecord>): Promise<UserRecord | null> {
+    for (const [key, user] of this.users.entries()) {
+      if (user.id === id) {
+        const updated: UserRecord = { ...user, ...updates };
+        this.users.set(key, updated);
+        return updated;
+      }
+    }
+    return null;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    for (const [key, user] of this.users.entries()) {
+      if (user.id === id) {
+        return this.users.delete(key);
+      }
+    }
+    return false;
+  }
+
   // Media Methods
   async getMedia(): Promise<MediaRecord[]> {
     return this.media;

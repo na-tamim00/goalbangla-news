@@ -19,8 +19,19 @@ export async function GET(req: NextRequest) {
       if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      const allPosts = await repo.getAllPostsAdmin();
-      return NextResponse.json({ posts: allPosts, total: allPosts.length });
+      let allPosts = await repo.getAllPostsAdmin();
+
+      // For Contributor, prioritize their own posts first
+      if (user.role === 'CONTRIBUTOR') {
+        allPosts = [...allPosts].sort((a, b) => {
+          const aOwn = a.authorId === user.id ? 1 : 0;
+          const bOwn = b.authorId === user.id ? 1 : 0;
+          if (aOwn !== bOwn) return bOwn - aOwn;
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        });
+      }
+
+      return NextResponse.json({ posts: allPosts, total: allPosts.length, user });
     }
 
     const result = await repo.getPosts({
@@ -61,16 +72,45 @@ export async function POST(req: NextRequest) {
       galleryImages,
       translations,
       scheduledPublishAt,
+      authorId,
     } = body;
 
     if (!slug || !translations || (!translations.bn?.title && !translations.en?.title)) {
       return NextResponse.json({ error: 'Title and slug are required' }, { status: 400 });
     }
 
+    // Role-based permission checks
+    let targetStatus = status;
+    let targetAuthorId = user.id;
+    let targetAuthorName = user.name;
+
+    if (user.role === 'CONTRIBUTOR') {
+      // Contributor cannot publish directly
+      if (status === 'PUBLISHED' || status === 'SCHEDULED') {
+        return NextResponse.json(
+          { error: 'Forbidden: Contributors cannot publish directly. Please submit to In Review.' },
+          { status: 403 }
+        );
+      }
+      targetStatus = status === 'IN_REVIEW' ? 'IN_REVIEW' : 'DRAFT';
+      targetAuthorId = user.id;
+      targetAuthorName = user.name;
+    } else {
+      // Admin or Editor can reassign author
+      if (authorId) {
+        const allUsers = await repo.getAllUsers();
+        const assigned = allUsers.find((u) => u.id === authorId);
+        if (assigned) {
+          targetAuthorId = assigned.id;
+          targetAuthorName = assigned.name;
+        }
+      }
+    }
+
     const newPost = await repo.createPost({
       slug: slug.trim().toLowerCase().replace(/\s+/g, '-'),
       type,
-      status,
+      status: targetStatus,
       category,
       leagueTag,
       featuredImage,
@@ -79,10 +119,10 @@ export async function POST(req: NextRequest) {
       audioUrl,
       audioShowNotes,
       galleryImages,
-      authorId: user.id,
-      authorName: user.name,
-      scheduledPublishAt,
-      publishedAt: status === 'PUBLISHED' ? new Date().toISOString() : undefined,
+      authorId: targetAuthorId,
+      authorName: targetAuthorName,
+      scheduledPublishAt: targetStatus === 'SCHEDULED' ? scheduledPublishAt : undefined,
+      publishedAt: targetStatus === 'PUBLISHED' ? new Date().toISOString() : undefined,
       translations: {
         bn: translations.bn || {
           language: 'bn',

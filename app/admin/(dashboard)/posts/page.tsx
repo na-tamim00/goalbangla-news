@@ -2,15 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { PostData } from '@/lib/db/types';
+import { PostData, PostStatus } from '@/lib/db/types';
+import { useAdminUser } from '@/components/AdminUserContext';
 import {
   PlusCircle,
   Search,
-  Filter,
   Edit,
   Trash2,
   ExternalLink,
-  Share2,
   FileText,
   Play,
   Headphones,
@@ -19,14 +18,21 @@ import {
   Clock,
   AlertCircle,
   Facebook,
+  Send,
+  RotateCcw,
+  Check,
+  User,
 } from 'lucide-react';
 
 export default function AdminPostsPage() {
+  const currentUser = useAdminUser();
   const [posts, setPosts] = useState<PostData[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [contributorTab, setContributorTab] = useState<'MINE' | 'ALL'>('MINE');
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const loadPosts = async () => {
     setLoading(true);
@@ -47,15 +53,97 @@ export default function AdminPostsPage() {
     loadPosts();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to permanently delete this post?')) return;
+  // Quick Action: Submit for review (Contributor)
+  const handleSubmitForReview = async (post: PostData) => {
+    setActionLoadingId(post.id);
+    try {
+      const res = await fetch(`/api/posts/${post.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'IN_REVIEW' }),
+      });
+      if (res.ok) {
+        setPosts((prev) =>
+          prev.map((p) => (p.id === post.id ? { ...p, status: 'IN_REVIEW' as PostStatus } : p))
+        );
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to submit for review');
+      }
+    } catch (err) {
+      alert('Network error submitting for review');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Quick Action: Publish post (Editor & Admin)
+  const handlePublish = async (post: PostData) => {
+    setActionLoadingId(post.id);
+    try {
+      const res = await fetch(`/api/posts/${post.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'PUBLISHED' }),
+      });
+      if (res.ok) {
+        const now = new Date().toISOString();
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === post.id ? { ...p, status: 'PUBLISHED' as PostStatus, publishedAt: now } : p
+          )
+        );
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to publish post');
+      }
+    } catch (err) {
+      alert('Network error publishing post');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Quick Action: Unpublish / Revert to Draft (Editor & Admin)
+  const handleUnpublish = async (post: PostData) => {
+    setActionLoadingId(post.id);
+    try {
+      const res = await fetch(`/api/posts/${post.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'DRAFT' }),
+      });
+      if (res.ok) {
+        setPosts((prev) =>
+          prev.map((p) => (p.id === post.id ? { ...p, status: 'DRAFT' as PostStatus } : p))
+        );
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to unpublish');
+      }
+    } catch (err) {
+      alert('Network error unpublishing');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Quick Action: Delete post (Editor & Admin only)
+  const handleDelete = async (id: string, title: string) => {
+    if (!confirm(`Are you sure you want to permanently delete "${title}"?`)) return;
+    setActionLoadingId(id);
     try {
       const res = await fetch(`/api/posts/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        setPosts(posts.filter((p) => p.id !== id));
+        setPosts((prev) => prev.filter((p) => p.id !== id));
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Delete failed');
       }
     } catch (err) {
-      alert('Delete failed');
+      alert('Network error deleting post');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -66,27 +154,52 @@ export default function AdminPostsPage() {
     window.open(fbUrl, '_blank', 'width=600,height=400');
   };
 
+  // Filter posts
   const filteredPosts = posts.filter((p) => {
+    // Contributor tab filter
+    if (currentUser.role === 'CONTRIBUTOR') {
+      if (contributorTab === 'MINE' && p.authorId !== currentUser.id) {
+        return false;
+      }
+    }
+
     const matchesStatus = statusFilter === 'ALL' || p.status === statusFilter;
     const matchesType = typeFilter === 'ALL' || p.type === typeFilter;
     const matchesSearch =
       !searchQuery.trim() ||
       p.translations.bn?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.translations.en?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.authorName && p.authorName.toLowerCase().includes(searchQuery.toLowerCase())) ||
       p.slug.toLowerCase().includes(searchQuery.toLowerCase());
+
     return matchesStatus && matchesType && matchesSearch;
   });
+
+  const isEditorOrAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'EDITOR';
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
         <div>
-          <h1 className="font-headline font-black text-3xl uppercase tracking-tight text-white">
-            Editorial Post Manager
+          <h1 className="font-headline font-black text-3xl uppercase tracking-tight text-white flex items-center gap-2.5">
+            <span>Editorial Post Manager</span>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded font-extrabold uppercase tracking-wider ${
+                currentUser.role === 'ADMIN'
+                  ? 'bg-rose-600 text-white'
+                  : currentUser.role === 'EDITOR'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-amber-600 text-white'
+              }`}
+            >
+              {currentUser.role}
+            </span>
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
-            Filter, search, review translations, and schedule articles across the newsroom
+            {currentUser.role === 'CONTRIBUTOR'
+              ? 'Draft articles, submit pieces for editorial review, and track publishing status'
+              : 'Review submissions, assign authors, approve & publish articles, and manage newsroom output'}
           </p>
         </div>
 
@@ -99,6 +212,37 @@ export default function AdminPostsPage() {
         </Link>
       </div>
 
+      {/* Contributor Role Tab Switcher */}
+      {currentUser.role === 'CONTRIBUTOR' && (
+        <div className="flex border-b border-zinc-800 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setContributorTab('MINE')}
+            className={`pb-2.5 px-4 flex items-center gap-2 border-b-2 transition-colors ${
+              contributorTab === 'MINE'
+                ? 'border-amber-500 text-amber-400'
+                : 'border-transparent text-zinc-400 hover:text-white'
+            }`}
+          >
+            <User className="w-4 h-4" />
+            <span>My Articles ({posts.filter((p) => p.authorId === currentUser.id).length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setContributorTab('ALL')}
+            className={`pb-2.5 px-4 flex items-center gap-2 border-b-2 transition-colors ${
+              contributorTab === 'ALL'
+                ? 'border-amber-500 text-amber-400'
+                : 'border-transparent text-zinc-400 hover:text-white'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>Newsroom Wire ({posts.length})</span>
+          </button>
+        </div>
+      )}
+
       {/* Filter Bar */}
       <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col md:flex-row items-center gap-4">
         {/* Search */}
@@ -107,7 +251,7 @@ export default function AdminPostsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search posts by headline or slug..."
+            placeholder="Search posts by headline, author, or slug..."
             className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-9 pr-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-brand-500"
           />
           <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -122,9 +266,9 @@ export default function AdminPostsPage() {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-brand-500"
           >
             <option value="ALL">All Statuses</option>
-            <option value="PUBLISHED">Published</option>
-            <option value="DRAFT">Draft</option>
-            <option value="IN_REVIEW">In Review</option>
+            <option value="PUBLISHED">Published (প্রকাশিত)</option>
+            <option value="IN_REVIEW">In Review (পর্যালোচনাধীন)</option>
+            <option value="DRAFT">Draft (খসড়া)</option>
             <option value="SCHEDULED">Scheduled</option>
           </select>
         </div>
@@ -165,14 +309,19 @@ export default function AdminPostsPage() {
                   <th className="px-4 py-3">Headline & Slug</th>
                   <th className="px-3 py-3">Category</th>
                   <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3">Author</th>
-                  <th className="px-3 py-3 text-right">Actions</th>
+                  <th className="px-3 py-3">Author / Byline</th>
+                  <th className="px-4 py-3 text-right">Workflow & Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800 font-medium">
                 {filteredPosts.map((post) => {
                   const titleBn = post.translations.bn?.title || '';
                   const titleEn = post.translations.en?.title || '';
+                  const isOwnPost = post.authorId === currentUser.id;
+                  const canEdit = isEditorOrAdmin || isOwnPost;
+                  const canPublish = isEditorOrAdmin;
+                  const canDelete = isEditorOrAdmin;
+                  const isActionLoading = actionLoadingId === post.id;
 
                   return (
                     <tr key={post.id} className="hover:bg-zinc-800/40 transition-colors">
@@ -225,7 +374,7 @@ export default function AdminPostsPage() {
                           </span>
                         )}
                         {post.status === 'IN_REVIEW' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-950 text-amber-400 border border-amber-800">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-950 text-amber-300 border border-amber-800 animate-pulse">
                             <AlertCircle className="w-3 h-3" />
                             <span>IN REVIEW</span>
                           </span>
@@ -239,48 +388,103 @@ export default function AdminPostsPage() {
                       </td>
 
                       {/* Author */}
-                      <td className="px-3 py-3 whitespace-nowrap text-zinc-400 text-xs">
-                        {post.authorName || 'Editor'}
+                      <td className="px-3 py-3 whitespace-nowrap text-zinc-300 text-xs">
+                        <span className="font-bold block">{post.authorName || 'Newsroom'}</span>
+                        {isOwnPost && (
+                          <span className="text-[10px] text-amber-400 font-normal">
+                            (Your article)
+                          </span>
+                        )}
                       </td>
 
                       {/* Actions */}
-                      <td className="px-3 py-3 whitespace-nowrap text-right space-x-2">
-                        {/* Facebook Share Button */}
-                        <button
-                          onClick={() => handleShareFacebook(post.slug)}
-                          title="Share to Facebook Page"
-                          className="p-1.5 rounded bg-zinc-800 hover:bg-[#1877F2] text-zinc-400 hover:text-white transition-colors"
-                        >
-                          <Facebook className="w-3.5 h-3.5 fill-current" />
-                        </button>
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Contributor: Submit for Review (if Draft & own post) */}
+                          {!isEditorOrAdmin && isOwnPost && post.status === 'DRAFT' && (
+                            <button
+                              type="button"
+                              disabled={isActionLoading}
+                              onClick={() => handleSubmitForReview(post)}
+                              title="Submit for Senior Editor Review"
+                              className="px-2 py-1 rounded bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1 shadow transition-colors"
+                            >
+                              <Send className="w-3 h-3" />
+                              <span>Submit Review</span>
+                            </button>
+                          )}
 
-                        {/* Public Preview */}
-                        <Link
-                          href={`/bn/news/${post.slug}`}
-                          target="_blank"
-                          title="View Live Article"
-                          className="p-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white inline-block transition-colors"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </Link>
+                          {/* Editor / Admin: Quick Approve & Publish */}
+                          {canPublish && (post.status === 'IN_REVIEW' || post.status === 'DRAFT') && (
+                            <button
+                              type="button"
+                              disabled={isActionLoading}
+                              onClick={() => handlePublish(post)}
+                              title="Approve and Publish Post Immediately"
+                              className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] uppercase tracking-wider flex items-center gap-1 shadow transition-colors"
+                            >
+                              <Check className="w-3 h-3" />
+                              <span>Publish</span>
+                            </button>
+                          )}
 
-                        {/* Edit */}
-                        <Link
-                          href={`/admin/posts/${post.id}/edit`}
-                          title="Edit Post"
-                          className="p-1.5 rounded bg-zinc-800 hover:bg-brand-600 text-zinc-400 hover:text-white inline-block transition-colors"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </Link>
+                          {/* Editor / Admin: Revert to Draft */}
+                          {canPublish && post.status === 'PUBLISHED' && (
+                            <button
+                              type="button"
+                              disabled={isActionLoading}
+                              onClick={() => handleUnpublish(post)}
+                              title="Unpublish / Revert to Draft"
+                              className="p-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-amber-400 transition-colors"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
-                        {/* Delete */}
-                        <button
-                          onClick={() => handleDelete(post.id)}
-                          title="Delete Post"
-                          className="p-1.5 rounded bg-zinc-800 hover:bg-rose-600 text-zinc-400 hover:text-white transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          {/* Facebook Share Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleShareFacebook(post.slug)}
+                            title="Share to Facebook"
+                            className="p-1.5 rounded bg-zinc-800 hover:bg-[#1877F2] text-zinc-400 hover:text-white transition-colors"
+                          >
+                            <Facebook className="w-3.5 h-3.5 fill-current" />
+                          </button>
+
+                          {/* Public Preview */}
+                          <Link
+                            href={`/bn/news/${post.slug}`}
+                            target="_blank"
+                            title="View Live Article"
+                            className="p-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white inline-block transition-colors"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </Link>
+
+                          {/* Edit (Available if Admin/Editor OR Contributor's own post) */}
+                          {canEdit && (
+                            <Link
+                              href={`/admin/posts/${post.id}/edit`}
+                              title="Edit Article"
+                              className="p-1.5 rounded bg-zinc-800 hover:bg-brand-600 text-zinc-400 hover:text-white inline-block transition-colors"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </Link>
+                          )}
+
+                          {/* Delete (Admin & Editor only) */}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              disabled={isActionLoading}
+                              onClick={() => handleDelete(post.id, titleBn || titleEn || post.slug)}
+                              title="Permanently Delete Article"
+                              className="p-1.5 rounded bg-zinc-800 hover:bg-rose-600 text-zinc-400 hover:text-white transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

@@ -32,16 +32,43 @@ export async function PUT(
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
-    // Contributor can only update their own post unless promoted to Editor/Admin
-    if (user.role === 'CONTRIBUTOR' && post.authorId !== user.id) {
-      return NextResponse.json({ error: 'Forbidden: you cannot edit posts by other authors' }, { status: 403 });
-    }
-
     const body = await req.json();
 
-    // If publishing, update publishedAt
-    if (body.status === 'PUBLISHED' && !post.publishedAt) {
-      body.publishedAt = new Date().toISOString();
+    // Contributor Permission Constraints
+    if (user.role === 'CONTRIBUTOR') {
+      if (post.authorId !== user.id) {
+        return NextResponse.json(
+          { error: 'Forbidden: Contributors can only edit their own articles.' },
+          { status: 403 }
+        );
+      }
+
+      // Contributor cannot publish directly
+      if (body.status === 'PUBLISHED' || body.status === 'SCHEDULED') {
+        return NextResponse.json(
+          { error: 'Forbidden: Contributors cannot publish directly. Please submit to In Review for editor approval.' },
+          { status: 403 }
+        );
+      }
+
+      // Lock author to self
+      delete body.authorId;
+      delete body.authorName;
+    } else {
+      // Admin or Editor can reassign author
+      if (body.authorId && body.authorId !== post.authorId) {
+        const allUsers = await repo.getAllUsers();
+        const assigned = allUsers.find((u) => u.id === body.authorId);
+        if (assigned) {
+          body.authorId = assigned.id;
+          body.authorName = assigned.name;
+        }
+      }
+    }
+
+    // If changing to PUBLISHED, ensure publishedAt is recorded
+    if (body.status === 'PUBLISHED') {
+      body.publishedAt = post.publishedAt || new Date().toISOString();
     }
 
     const updated = await repo.updatePost(params.id, body);
@@ -61,14 +88,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Only Admin and Editor have capability to delete posts
+    if (user.role === 'CONTRIBUTOR') {
+      return NextResponse.json(
+        { error: 'Forbidden: Contributors do not have permission to delete posts.' },
+        { status: 403 }
+      );
+    }
+
     const post = await repo.getPostById(params.id);
     if (!post) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
-    }
-
-    // Only Admin and Editor can delete
-    if (user.role === 'CONTRIBUTOR' && post.authorId !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     await repo.deletePost(params.id);

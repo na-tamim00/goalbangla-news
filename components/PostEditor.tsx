@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PostData, PostType, PostStatus } from '@/lib/db/types';
+import { useAdminUser } from '@/components/AdminUserContext';
+import MediaPicker from '@/components/MediaPicker';
+import GalleryEditor from '@/components/GalleryEditor';
 import {
   Save,
   Eye,
@@ -17,6 +20,9 @@ import {
   Globe,
   Sparkles,
   X,
+  User,
+  Send,
+  Lock,
 } from 'lucide-react';
 
 interface PostEditorProps {
@@ -26,14 +32,24 @@ interface PostEditorProps {
 
 export default function PostEditor({ initialData, isEditing = false }: PostEditorProps) {
   const router = useRouter();
+  const currentUser = useAdminUser();
 
   const [type, setType] = useState<PostType>(initialData?.type || 'ARTICLE');
-  const [status, setStatus] = useState<PostStatus>(initialData?.status || 'DRAFT');
+  const [status, setStatus] = useState<PostStatus>(
+    currentUser.role === 'CONTRIBUTOR' && initialData?.status === 'PUBLISHED'
+      ? 'IN_REVIEW'
+      : initialData?.status || 'DRAFT'
+  );
   const [category, setCategory] = useState(initialData?.category || 'BREAKING');
   const [leagueTag, setLeagueTag] = useState(initialData?.leagueTag || 'BPL');
   const [slug, setSlug] = useState(initialData?.slug || '');
   const [featuredImage, setFeaturedImage] = useState(initialData?.featuredImage || '');
   const [scheduledPublishAt, setScheduledPublishAt] = useState(initialData?.scheduledPublishAt || '');
+
+  // Author Reassignment & Attribution
+  const [authorId, setAuthorId] = useState(initialData?.authorId || currentUser.id);
+  const [authorName, setAuthorName] = useState(initialData?.authorName || currentUser.name);
+  const [authorsList, setAuthorsList] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
 
   // Video fields
   const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '');
@@ -72,6 +88,20 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
+  // Fetch registered authors for Admin / Editor dropdown
+  useEffect(() => {
+    if (currentUser.role === 'ADMIN' || currentUser.role === 'EDITOR') {
+      fetch('/api/users')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.users) {
+            setAuthorsList(data.users);
+          }
+        })
+        .catch((err) => console.error('Error fetching authors:', err));
+    }
+  }, [currentUser.role]);
+
   // Auto-generate slug from English title or Bengali title
   const handleTitleChange = (val: string, lang: 'bn' | 'en') => {
     if (lang === 'bn') {
@@ -87,7 +117,15 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
     }
   };
 
-  const handleSave = async () => {
+  const handleAuthorChange = (newAuthorId: string) => {
+    setAuthorId(newAuthorId);
+    const selected = authorsList.find((u) => u.id === newAuthorId);
+    if (selected) {
+      setAuthorName(selected.name);
+    }
+  };
+
+  const handleSave = async (overrideStatus?: PostStatus) => {
     if (!titleBn && !titleEn) {
       alert('Please enter a headline in Bengali or English');
       return;
@@ -97,12 +135,21 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
       return;
     }
 
+    const finalStatus = overrideStatus || status;
+
+    // Contributor safety check
+    if (currentUser.role === 'CONTRIBUTOR' && finalStatus === 'PUBLISHED') {
+      alert('Contributors cannot publish directly. Submitting for editorial review instead.');
+      setStatus('IN_REVIEW');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
         slug: slug.trim().toLowerCase(),
         type,
-        status,
+        status: finalStatus,
         category,
         leagueTag,
         featuredImage,
@@ -111,7 +158,9 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
         audioUrl,
         audioShowNotes,
         galleryImages,
-        scheduledPublishAt: status === 'SCHEDULED' ? scheduledPublishAt : undefined,
+        authorId: currentUser.role === 'CONTRIBUTOR' ? currentUser.id : authorId,
+        authorName: currentUser.role === 'CONTRIBUTOR' ? currentUser.name : authorName,
+        scheduledPublishAt: finalStatus === 'SCHEDULED' ? scheduledPublishAt : undefined,
         translations: {
           bn: {
             language: 'bn',
@@ -156,6 +205,8 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
     }
   };
 
+  const isContributor = currentUser.role === 'CONTRIBUTOR';
+
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Top Action Bar */}
@@ -173,67 +224,104 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
               {isEditing ? 'Edit Post (পোস্ট সম্পাদনা)' : 'Create New Post (নতুন পোস্ট রচনা)'}
             </h1>
             <p className="text-xs text-zinc-400">
-              Unified content model: Article, Video, Audio, and Photo Gallery
+              Ghost-inspired single-column editor with bilingual Bengali/English inputs
             </p>
           </div>
         </div>
 
+        {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          {/* Live Preview Button */}
           <button
             type="button"
             onClick={() => setShowPreview(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-lg text-xs font-bold text-zinc-200 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs font-bold uppercase transition-colors"
           >
-            <Eye className="w-4 h-4 text-brand-400" />
-            <span>Live Preview</span>
+            <Eye className="w-4 h-4" />
+            <span>Preview</span>
           </button>
 
-          {/* Save / Publish Button */}
-          <button
-            type="button"
-            disabled={saving}
-            onClick={handleSave}
-            className="inline-flex items-center gap-1.5 px-5 py-2 bg-brand-600 hover:bg-brand-500 rounded-lg text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-colors disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            <span>{saving ? 'Saving...' : status === 'PUBLISHED' ? 'Publish Now' : 'Save Draft'}</span>
-          </button>
+          {isContributor ? (
+            <>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => handleSave('DRAFT')}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold uppercase transition-colors disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save Draft</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => handleSave('IN_REVIEW')}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold uppercase tracking-wider transition-colors shadow-lg disabled:opacity-50"
+              >
+                <Send className="w-4 h-4" />
+                <span>Submit for Review</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => handleSave()}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold uppercase transition-colors disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save ({status})</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => handleSave('PUBLISHED')}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-lg disabled:opacity-50"
+              >
+                <Check className="w-4 h-4" />
+                <span>Publish Immediately</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
+      {/* Main Grid: 2 Columns (Editor 2/3, Metadata 1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Editor (Left 2 cols) */}
+        {/* Left 2 Cols: Content Inputs */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Post Type Selector Pills */}
-          <div className="bg-zinc-900 border border-zinc-800 p-2 rounded-xl flex items-center gap-2 text-xs font-bold">
+          {/* Content Type Selector */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex gap-2">
             {[
-              { id: 'ARTICLE', label: 'Article (নিবন্ধ)', icon: FileText },
-              { id: 'VIDEO', label: 'Video (ভিডিও)', icon: Play },
-              { id: 'AUDIO', label: 'Audio / Podcast (অডিও)', icon: Headphones },
-              { id: 'GALLERY', label: 'Photo Gallery (ছবি)', icon: Camera },
+              { id: 'ARTICLE', label: 'Article', icon: FileText },
+              { id: 'VIDEO', label: 'Video Post', icon: Play },
+              { id: 'AUDIO', label: 'Audio Podcast', icon: Headphones },
+              { id: 'GALLERY', label: 'Photo Gallery', icon: Camera },
             ].map((t) => {
               const Icon = t.icon;
+              const active = type === t.id;
               return (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setType(t.id as PostType)}
-                  className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all ${
-                    type === t.id
-                      ? 'bg-brand-600 text-white shadow-md'
-                      : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    active
+                      ? 'bg-brand-600 text-white shadow'
+                      : 'bg-zinc-950/60 text-zinc-400 hover:text-white hover:bg-zinc-800/60'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  <span>{t.label.split(' ')[0]}</span>
+                  <span>{t.label}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Bilingual Language Switcher Tabs */}
-          <div className="flex border-b border-zinc-800 bg-zinc-900 rounded-t-xl px-4 pt-2">
+          {/* Bilingual Language Switcher Bar */}
+          <div className="flex border-b border-zinc-800">
             <button
               type="button"
               onClick={() => setLangTab('bn')}
@@ -244,8 +332,9 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
               }`}
             >
               <Globe className="w-3.5 h-3.5" />
-              <span>বাংলা কনটেন্ট (Bengali)</span>
+              <span>বাংলা সামগ্রী (Bengali)</span>
             </button>
+
             <button
               type="button"
               onClick={() => setLangTab('en')}
@@ -394,34 +483,28 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
             </div>
           )}
 
-          {/* Type-Specific Fields: Video / Audio / Gallery */}
+          {/* Type-Specific Media Components */}
           {type === 'VIDEO' && (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-4">
-              <h3 className="font-bold text-sm text-brand-400 uppercase tracking-wider flex items-center gap-2">
-                <Play className="w-4 h-4 fill-brand-400" />
-                <span>Video Post Configuration</span>
-              </h3>
-              <div>
+            <div className="space-y-4">
+              <MediaPicker
+                label="Video Asset or Embed URL"
+                value={videoUrl}
+                onChange={setVideoUrl}
+                accept="video/*"
+                type="video"
+                placeholder="https://www.youtube.com/watch?v=... or upload .mp4"
+                description="Upload direct MP4 video file or paste YouTube / Vimeo / Facebook embed link"
+              />
+
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
                 <label className="block text-xs font-bold text-zinc-300 mb-1">
-                  Video URL (YouTube, Vimeo, Facebook or direct .mp4)
-                </label>
-                <input
-                  type="text"
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 text-xs text-zinc-200"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-300 mb-1">
-                  Video Transcript (for SEO & Accessibility)
+                  Video Transcript (ভিডিও বিবরণ ও সাবটাইটেল)
                 </label>
                 <textarea
                   rows={3}
                   value={videoTranscript}
                   onChange={(e) => setVideoTranscript(e.target.value)}
-                  placeholder="Transcript of the match highlights or commentary..."
+                  placeholder="Transcript of match highlights, player reactions, or post-match press conference..."
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 text-xs text-zinc-200"
                 />
               </div>
@@ -429,103 +512,82 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
           )}
 
           {type === 'AUDIO' && (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-4">
-              <h3 className="font-bold text-sm text-brand-400 uppercase tracking-wider flex items-center gap-2">
-                <Headphones className="w-4 h-4" />
-                <span>Audio / Podcast Configuration</span>
-              </h3>
-              <div>
+            <div className="space-y-4">
+              <MediaPicker
+                label="Audio / Podcast Audio Stream (.mp3)"
+                value={audioUrl}
+                onChange={setAudioUrl}
+                accept="audio/*"
+                type="audio"
+                placeholder="Upload podcast .mp3 or paste audio feed URL..."
+                description="Upload match commentary podcast or post-match reaction audio"
+              />
+
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
                 <label className="block text-xs font-bold text-zinc-300 mb-1">
-                  Audio Stream URL (.mp3 / podcast feed)
-                </label>
-                <input
-                  type="text"
-                  value={audioUrl}
-                  onChange={(e) => setAudioUrl(e.target.value)}
-                  placeholder="https://cdn.domain.com/podcast-ep1.mp3"
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 text-xs text-zinc-200"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-300 mb-1">
-                  Show Notes & Guest Bios
+                  Audio Show Notes (শো নোট ও টাইমস্ট্যাম্প)
                 </label>
                 <textarea
                   rows={3}
                   value={audioShowNotes}
                   onChange={(e) => setAudioShowNotes(e.target.value)}
-                  placeholder="Topic timestamps, guest panelists, and reference links..."
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 text-xs text-zinc-200"
+                  placeholder="00:00 - Introduction\n04:15 - Tactical Discussion\n12:30 - Player Ratings"
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 text-xs text-zinc-200 font-mono"
                 />
               </div>
             </div>
           )}
 
           {type === 'GALLERY' && (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-sm text-brand-400 uppercase tracking-wider flex items-center gap-2">
-                  <Camera className="w-4 h-4" />
-                  <span>Photo Album Images</span>
-                </h3>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setGalleryImages([
-                      ...galleryImages,
-                      { url: '', captionBn: '', captionEn: '' },
-                    ])
-                  }
-                  className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold rounded text-zinc-200"
-                >
-                  + Add Another Image
-                </button>
-              </div>
-
-              {galleryImages.map((img, i) => (
-                <div key={i} className="p-3 bg-zinc-950 border border-zinc-800 rounded-lg space-y-2 text-xs">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-zinc-400">Image #{i + 1}</span>
-                    {galleryImages.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setGalleryImages(galleryImages.filter((_, idx) => idx !== i))}
-                        className="text-rose-400 hover:underline text-[11px]"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="text"
-                    value={img.url}
-                    onChange={(e) => {
-                      const updated = [...galleryImages];
-                      updated[i].url = e.target.value;
-                      setGalleryImages(updated);
-                    }}
-                    placeholder="Image URL (e.g. https://...)"
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-zinc-200"
-                  />
-                  <input
-                    type="text"
-                    value={img.captionBn || ''}
-                    onChange={(e) => {
-                      const updated = [...galleryImages];
-                      updated[i].captionBn = e.target.value;
-                      setGalleryImages(updated);
-                    }}
-                    placeholder="ছবি ক্যাপশন (বাংলা)"
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-zinc-200"
-                  />
-                </div>
-              ))}
-            </div>
+            <GalleryEditor images={galleryImages} onChange={setGalleryImages} />
           )}
         </div>
 
         {/* Sidebar Settings (Right 1 col) */}
         <div className="space-y-6">
+          {/* Author / Publisher Widget (PART D) */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
+            <h3 className="font-bold text-xs text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-brand-500" />
+              <span>Author / Publisher Attribution</span>
+            </h3>
+
+            {isContributor ? (
+              <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-amber-950 text-amber-400 border border-amber-800 flex items-center justify-center font-bold text-sm shrink-0">
+                  {currentUser.name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-bold text-xs text-white block truncate">{currentUser.name}</span>
+                  <span className="text-[10px] text-zinc-500 flex items-center gap-1 mt-0.5">
+                    <Lock className="w-3 h-3 text-zinc-500" /> Locked to your account
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <select
+                  value={authorId}
+                  onChange={(e) => handleAuthorChange(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 text-xs text-white font-bold focus:outline-none focus:border-brand-500"
+                >
+                  {authorsList.length > 0 ? (
+                    authorsList.map((author) => (
+                      <option key={author.id} value={author.id}>
+                        {author.name} ({author.role})
+                      </option>
+                    ))
+                  ) : (
+                    <option value={authorId}>{authorName || 'Current Author'}</option>
+                  )}
+                </select>
+                <p className="text-[10px] text-zinc-500">
+                  Reassign article attribution to any registered newsroom reporter or contributor.
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* Publishing State Widget */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-4">
             <h3 className="font-bold text-xs text-zinc-300 uppercase tracking-wider">
@@ -533,12 +595,18 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
             </h3>
 
             <div className="space-y-2">
-              {[
-                { id: 'DRAFT', label: 'Draft (খসড়া)', desc: 'Saved privately' },
-                { id: 'IN_REVIEW', label: 'In Review (পর্যালোচনাধীন)', desc: 'Ready for senior editor' },
-                { id: 'SCHEDULED', label: 'Scheduled (শিডিউল্ড)', desc: 'Publish at future date' },
-                { id: 'PUBLISHED', label: 'Published (প্রকাশিত)', desc: 'Live immediately' },
-              ].map((s) => (
+              {(isContributor
+                ? [
+                    { id: 'DRAFT', label: 'Draft (খসড়া)', desc: 'Saved privately' },
+                    { id: 'IN_REVIEW', label: 'In Review (পর্যালোচনাধীন)', desc: 'Ready for senior editor' },
+                  ]
+                : [
+                    { id: 'DRAFT', label: 'Draft (খসড়া)', desc: 'Saved privately' },
+                    { id: 'IN_REVIEW', label: 'In Review (পর্যালোচনাধীন)', desc: 'Ready for senior editor' },
+                    { id: 'SCHEDULED', label: 'Scheduled (শিডিউল্ড)', desc: 'Publish at future date' },
+                    { id: 'PUBLISHED', label: 'Published (প্রকাশিত)', desc: 'Live immediately' },
+                  ]
+              ).map((s) => (
                 <label
                   key={s.id}
                   className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
@@ -562,8 +630,8 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
               ))}
             </div>
 
-            {/* If Scheduled */}
-            {status === 'SCHEDULED' && (
+            {/* If Scheduled (Admin & Editor only) */}
+            {!isContributor && status === 'SCHEDULED' && (
               <div className="pt-2 border-t border-zinc-800">
                 <label className="block text-[11px] font-bold text-zinc-400 mb-1">
                   Schedule Date & Time
@@ -591,7 +659,7 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-xs text-zinc-200"
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-xs text-zinc-200 font-bold"
               >
                 <option value="BREAKING">Breaking News (ব্রেকিং)</option>
                 <option value="TRANSFERS">Transfers (দলবদল)</option>
@@ -610,7 +678,7 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
               <select
                 value={leagueTag}
                 onChange={(e) => setLeagueTag(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-xs text-zinc-200"
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-xs text-zinc-200 font-bold"
               >
                 <option value="BPL">Bangladesh Premier League (BPL)</option>
                 <option value="PREMIER_LEAGUE">Premier League (ইংল্যান্ড)</option>
@@ -636,27 +704,16 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
             </div>
           </div>
 
-          {/* Featured Image URL Widget */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
-            <h3 className="font-bold text-xs text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-              <ImageIcon className="w-3.5 h-3.5 text-brand-500" />
-              <span>Featured Cover Image</span>
-            </h3>
-
-            <input
-              type="text"
-              value={featuredImage}
-              onChange={(e) => setFeaturedImage(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
-              className="w-full bg-zinc-950 border border-zinc-700 rounded p-2 text-xs text-zinc-200"
-            />
-
-            {featuredImage && (
-              <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-zinc-700">
-                <img src={featuredImage} alt="Cover Preview" className="w-full h-full object-cover" />
-              </div>
-            )}
-          </div>
+          {/* Featured Cover Image Widget with MediaPicker */}
+          <MediaPicker
+            label="Featured Cover Image"
+            value={featuredImage}
+            onChange={setFeaturedImage}
+            accept="image/*"
+            type="image"
+            placeholder="Upload or choose photo..."
+            description="Hero banner photo used for article cover and social share cards"
+          />
         </div>
       </div>
 
@@ -678,13 +735,21 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
             </div>
 
             <div className="space-y-4">
-              <div className="inline-block px-2.5 py-0.5 rounded bg-brand-600 text-white font-extrabold text-[11px] uppercase">
-                {category}
+              <div className="flex items-center gap-2">
+                <span className="inline-block px-2.5 py-0.5 rounded bg-brand-600 text-white font-extrabold text-[11px] uppercase">
+                  {category}
+                </span>
+                <span className="text-xs text-zinc-400 font-bold uppercase">{leagueTag}</span>
               </div>
 
               <h1 className="font-headline font-black text-3xl sm:text-4xl text-white leading-tight">
                 {titleBn || titleEn || 'Untitled Headline'}
               </h1>
+
+              <div className="text-xs text-zinc-400 flex items-center gap-2 py-1 border-y border-zinc-800">
+                <User className="w-3.5 h-3.5 text-brand-500" />
+                <span>লেখক / Author: <strong className="text-white">{authorName}</strong></span>
+              </div>
 
               {(excerptBn || excerptEn) && (
                 <p className="text-zinc-300 text-base italic border-l-4 border-brand-500 pl-3">
@@ -693,7 +758,7 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
               )}
 
               {featuredImage && (
-                <div className="relative aspect-video w-full rounded-xl overflow-hidden">
+                <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-zinc-800">
                   <img src={featuredImage} alt="Preview" className="w-full h-full object-cover" />
                 </div>
               )}
