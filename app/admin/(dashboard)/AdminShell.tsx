@@ -35,12 +35,12 @@ export default function AdminShell({ user, children }: AdminShellProps) {
   };
 
   const navItems = [
-    { href: '/admin/posts', label: 'All Posts (সকল পোস্ট)', icon: FileText, roles: ['ADMIN', 'EDITOR', 'CONTRIBUTOR'] },
-    { href: '/admin/posts/new', label: 'New Post (নতুন পোস্ট)', icon: PlusCircle, roles: ['ADMIN', 'EDITOR', 'CONTRIBUTOR'] },
-    { href: '/admin/auto-reports', label: 'Auto Match Reports', icon: Activity, roles: ['ADMIN', 'EDITOR'] },
-    { href: '/admin/media', label: 'Media Library', icon: FolderOpen, roles: ['ADMIN', 'EDITOR'] },
-    { href: '/admin/standings-override', label: 'Standings Override', icon: Trophy, roles: ['ADMIN', 'EDITOR'] },
-    { href: '/admin/users', label: 'User Accounts (টিম ও ভূমিকা)', icon: Users, roles: ['ADMIN'] },
+    { href: '/admin/posts', label: 'All Posts (সকল পোস্ট)', icon: FileText, roles: ['ADMIN', 'SUB_ADMIN', 'CONTRIBUTOR'] },
+    { href: '/admin/posts/new', label: 'New Post (নতুন পোস্ট)', icon: PlusCircle, roles: ['ADMIN', 'SUB_ADMIN', 'CONTRIBUTOR'] },
+    { href: '/admin/auto-reports', label: 'Auto Match Reports', icon: Activity, roles: ['ADMIN', 'SUB_ADMIN'] },
+    { href: '/admin/media', label: 'Media Library', icon: FolderOpen, roles: ['ADMIN', 'SUB_ADMIN'] },
+    { href: '/admin/standings-override', label: 'Standings Override', icon: Trophy, roles: ['ADMIN', 'SUB_ADMIN'] },
+    { href: '/admin/users', label: 'User Accounts (টিম ও ভূমিকা)', icon: Users, roles: ['ADMIN', 'SUB_ADMIN'] },
   ].filter((item) => item.roles.includes(user.role));
 
   return (
@@ -78,11 +78,14 @@ export default function AdminShell({ user, children }: AdminShellProps) {
           </div>
           <div className="flex-1 min-w-0">
             <h4 className="font-bold text-xs text-white truncate">{user.name}</h4>
+            {user.displayTitle && (
+              <p className="text-[10px] text-zinc-400 truncate">{user.displayTitle}</p>
+            )}
             <span
               className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider text-white ${
                 user.role === 'ADMIN'
                   ? 'bg-rose-600'
-                  : user.role === 'EDITOR'
+                  : user.role === 'SUB_ADMIN'
                   ? 'bg-emerald-600'
                   : 'bg-amber-600'
               }`}

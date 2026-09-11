@@ -1,38 +1,6 @@
 import { PostData, UserRecord } from './types';
-import bcrypt from 'bcryptjs';
 
-// Pre-hashed passwords for demo users: "admin123", "editor123", "writer123"
-// Generated with bcrypt.hashSync(pass, 10)
-const ADMIN_HASH = '$2a$10$wT2Hl4zB4R9wK1J0h6kH3.2f5yR.W0hI3kK5hV8i9vH.w0L3m4eKm';
-const EDITOR_HASH = '$2a$10$tZ2Hl4zB4R9wK1J0h6kH3.2f5yR.W0hI3kK5hV8i9vH.w0L3m4eKm';
-const CONTRIBUTOR_HASH = '$2a$10$pL2Hl4zB4R9wK1J0h6kH3.2f5yR.W0hI3kK5hV8i9vH.w0L3m4eKm';
-
-export const seedUsers: UserRecord[] = [
-  {
-    id: 'user-admin',
-    email: 'admin@goalbangla.com',
-    passwordHash: '$2a$10$mBqL818Z4xN4RkO0n0mNgeE5aH1V8I5Ue3G3p3G9u8p9R1n5W9yOi', // admin123
-    name: 'তানভীর আহমেদ (Tanvir Ahmed)',
-    role: 'ADMIN',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80',
-  },
-  {
-    id: 'user-editor',
-    email: 'editor@goalbangla.com',
-    passwordHash: '$2a$10$mBqL818Z4xN4RkO0n0mNgeE5aH1V8I5Ue3G3p3G9u8p9R1n5W9yOi', // editor123
-    name: 'মাহমুদুল হাসান (Mahmudul Hasan)',
-    role: 'EDITOR',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
-  },
-  {
-    id: 'user-contributor',
-    email: 'writer@goalbangla.com',
-    passwordHash: '$2a$10$mBqL818Z4xN4RkO0n0mNgeE5aH1V8I5Ue3G3p3G9u8p9R1n5W9yOi', // writer123
-    name: 'রাকিবুল ইসলাম (Rakibul Islam)',
-    role: 'CONTRIBUTOR',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80',
-  },
-];
+export const seedUsers: UserRecord[] = [];
 
 export const seedPosts: PostData[] = [
   {
@@ -43,8 +11,9 @@ export const seedPosts: PostData[] = [
     category: 'BREAKING',
     leagueTag: 'BPL',
     featuredImage: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
-    authorId: 'user-admin',
+    authorId: 'system',
     authorName: 'তানভীর আহমেদ',
+    authorTitle: 'সিনিয়র ফুটবল করেসপনডেন্ট',
     viewCount: 14820,
     publishedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
     createdAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
@@ -110,8 +79,9 @@ With 47 points from 18 matches, Kings remain unassailable at the summit, seven p
     category: 'MATCH_REPORTS',
     leagueTag: 'PREMIER_LEAGUE',
     featuredImage: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1200&q=80',
-    authorId: 'user-editor',
+    authorId: 'system',
     authorName: 'মাহমুদুল হাসান',
+    authorTitle: 'ইউরোপিয়ান ফুটবল ডেস্ক',
     viewCount: 22350,
     publishedAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
     createdAt: new Date(Date.now() - 6 * 3600 * 1000).toISOString(),
@@ -161,8 +131,9 @@ Erling Haaland broke the deadlock on 18 minutes, latching onto Kevin De Bruyne's
     category: 'BREAKING',
     leagueTag: 'LA_LIGA',
     featuredImage: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=1200&q=80',
-    authorId: 'user-admin',
+    authorId: 'system',
     authorName: 'তানভীর আহমেদ',
+    authorTitle: 'সিনিয়র করেসপনডেন্ট',
     viewCount: 31200,
     publishedAt: new Date(Date.now() - 10 * 3600 * 1000).toISOString(),
     createdAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
@@ -206,8 +177,9 @@ A breathless El Clásico produced drama fit for the ages as Kylian Mbappé nette
     category: 'TACTICS',
     leagueTag: 'PREMIER_LEAGUE',
     featuredImage: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80',
-    authorId: 'user-contributor',
+    authorId: 'system',
     authorName: 'রাকিবুল ইসলাম',
+    authorTitle: 'ট্যাকটিক্যাল অ্যানালিস্ট',
     viewCount: 9400,
     publishedAt: new Date(Date.now() - 20 * 3600 * 1000).toISOString(),
     createdAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
@@ -253,8 +225,9 @@ Pep Guardiola has reshaped modern positional play by dismantling the traditional
     category: 'TRANSFERS',
     leagueTag: 'UCL',
     featuredImage: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1200&q=80',
-    authorId: 'user-editor',
+    authorId: 'system',
     authorName: 'মাহমুদুল হাসান',
+    authorTitle: 'ট্রান্সফার করেসপনডেন্ট',
     viewCount: 16100,
     publishedAt: new Date(Date.now() - 30 * 3600 * 1000).toISOString(),
     createdAt: new Date(Date.now() - 32 * 3600 * 1000).toISOString(),
@@ -301,8 +274,9 @@ As clubs prepare for the pre-season window, boardroom discussions across Madrid,
     featuredImage: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
     videoUrl: 'https://www.youtube.com/watch?v=kYJ3J9_z-pI',
     videoTranscript: 'এই ভিডিওতে চ্যাম্পিয়ন্স লিগের সর্বশেষ রাউন্ডের শীর্ষ ৫টি দর্শনীয় গোল এবং মাঠের সেরা মুভমেন্ট দেখানো হয়েছে।',
-    authorId: 'user-admin',
+    authorId: 'system',
     authorName: 'তানভীর আহমেদ',
+    authorTitle: 'ভিডিও প্রযোজক',
     viewCount: 18500,
     publishedAt: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
     createdAt: new Date(Date.now() - 40 * 3600 * 1000).toISOString(),
@@ -342,8 +316,9 @@ Relive the most breathtaking goals from the latest round of the UEFA Champions L
     featuredImage: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80',
     audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     audioShowNotes: 'আলোচক: তানভীর আহমেদ ও জাতীয় দলের সাবেক অধিনায়ক। মূল বিষয়: তৃণমূল একাডেমি ও যুব উন্নয়ন।',
-    authorId: 'user-editor',
+    authorId: 'system',
     authorName: 'মাহমুদুল হাসান',
+    authorTitle: 'পডকাস্ট হোস্ট',
     viewCount: 7800,
     publishedAt: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
     createdAt: new Date(Date.now() - 50 * 3600 * 1000).toISOString(),
@@ -398,8 +373,9 @@ Listen to the premiere episode of the GoalBangla Podcast featuring expert analys
         captionEn: 'Players erupt in celebration hoisting the championship trophy',
       }
     ],
-    authorId: 'user-admin',
+    authorId: 'system',
     authorName: 'তানভীর আহমেদ',
+    authorTitle: 'ফটোসাংবাদিক',
     viewCount: 11200,
     publishedAt: new Date(Date.now() - 60 * 3600 * 1000).toISOString(),
     createdAt: new Date(Date.now() - 65 * 3600 * 1000).toISOString(),

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { repo } from '@/lib/db';
-import { signSessionToken } from '@/lib/auth';
+import { signSessionToken, verifyPassword } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,20 +9,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    const user = await repo.getUserByEmail(email);
+    const trimmedEmail = email.trim().toLowerCase();
+    const user = await repo.getUserByEmail(trimmedEmail);
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Check credentials (for seed users: "admin123", "editor123", "writer123")
-    const isValid =
-      (email === 'admin@goalbangla.com' && password === 'admin123') ||
-      (email === 'editor@goalbangla.com' && password === 'editor123') ||
-      (email === 'writer@goalbangla.com' && password === 'writer123') ||
-      password === 'admin123';
-
+    // Real bcrypt password verification
+    const isValid = await verifyPassword(password, user.passwordHash);
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    }
+
+    // Check account verification status
+    if (user.status === 'PENDING_VERIFICATION') {
+      return NextResponse.json(
+        {
+          error: 'Your Gmail address is pending verification. Please enter the 6-digit verification code.',
+          pendingVerification: true,
+          email: user.email,
+        },
+        { status: 403 }
+      );
     }
 
     const authUser = {
@@ -30,6 +38,9 @@ export async function POST(req: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role,
+      displayTitle: user.displayTitle,
+      avatarUrl: user.avatarUrl,
+      mustChangePassword: user.mustChangePassword,
     };
 
     const token = await signSessionToken(authUser);

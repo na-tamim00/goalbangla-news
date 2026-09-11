@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
     let targetStatus = status;
     let targetAuthorId = user.id;
     let targetAuthorName = user.name;
+    let targetAuthorTitle = user.displayTitle || 'Contributing Author';
 
     if (user.role === 'CONTRIBUTOR') {
       // Contributor cannot publish directly
@@ -95,14 +96,16 @@ export async function POST(req: NextRequest) {
       targetStatus = status === 'IN_REVIEW' ? 'IN_REVIEW' : 'DRAFT';
       targetAuthorId = user.id;
       targetAuthorName = user.name;
+      targetAuthorTitle = user.displayTitle || 'Contributing Author';
     } else {
-      // Admin or Editor can reassign author
+      // Admin or Sub-Admin can reassign author
       if (authorId) {
         const allUsers = await repo.getAllUsers();
         const assigned = allUsers.find((u) => u.id === authorId);
         if (assigned) {
           targetAuthorId = assigned.id;
           targetAuthorName = assigned.name;
+          targetAuthorTitle = assigned.displayTitle || body.authorTitle || 'Contributing Author';
         }
       }
     }
@@ -121,6 +124,7 @@ export async function POST(req: NextRequest) {
       galleryImages,
       authorId: targetAuthorId,
       authorName: targetAuthorName,
+      authorTitle: targetAuthorTitle,
       scheduledPublishAt: targetStatus === 'SCHEDULED' ? scheduledPublishAt : undefined,
       publishedAt: targetStatus === 'PUBLISHED' ? new Date().toISOString() : undefined,
       translations: {

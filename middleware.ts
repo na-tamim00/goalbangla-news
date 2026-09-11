@@ -34,8 +34,14 @@ export async function middleware(req: NextRequest) {
     return response;
   }
 
-  // Protect all /admin routes except /admin/login
-  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+  // Protect all /admin routes except public onboarding / auth routes
+  const isPublicAdminRoute =
+    pathname === '/admin' ||
+    pathname === '/admin/login' ||
+    pathname === '/admin/setup' ||
+    pathname === '/admin/verify-email';
+
+  if (pathname.startsWith('/admin') && !isPublicAdminRoute) {
     const token = req.cookies.get('goalbangla_session')?.value;
     if (!token) {
       const loginUrl = new URL('/admin/login', req.url);

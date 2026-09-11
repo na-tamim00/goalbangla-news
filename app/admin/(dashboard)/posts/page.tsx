@@ -175,7 +175,7 @@ export default function AdminPostsPage() {
     return matchesStatus && matchesType && matchesSearch;
   });
 
-  const isEditorOrAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'EDITOR';
+  const isEditorOrAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'SUB_ADMIN';
 
   return (
     <div className="space-y-6">
@@ -188,7 +188,7 @@ export default function AdminPostsPage() {
               className={`text-[10px] px-2 py-0.5 rounded font-extrabold uppercase tracking-wider ${
                 currentUser.role === 'ADMIN'
                   ? 'bg-rose-600 text-white'
-                  : currentUser.role === 'EDITOR'
+                  : currentUser.role === 'SUB_ADMIN'
                   ? 'bg-emerald-600 text-white'
                   : 'bg-amber-600 text-white'
               }`}

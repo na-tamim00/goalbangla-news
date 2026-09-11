@@ -49,7 +49,10 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
   // Author Reassignment & Attribution
   const [authorId, setAuthorId] = useState(initialData?.authorId || currentUser.id);
   const [authorName, setAuthorName] = useState(initialData?.authorName || currentUser.name);
-  const [authorsList, setAuthorsList] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
+  const [authorTitle, setAuthorTitle] = useState(initialData?.authorTitle || currentUser.displayTitle || '');
+  const [authorsList, setAuthorsList] = useState<
+    { id: string; name: string; email: string; role: string; displayTitle?: string }[]
+  >([]);
 
   // Video fields
   const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '');
@@ -88,9 +91,9 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Fetch registered authors for Admin / Editor dropdown
+  // Fetch registered authors for Admin / Sub-Admin dropdown
   useEffect(() => {
-    if (currentUser.role === 'ADMIN' || currentUser.role === 'EDITOR') {
+    if (currentUser.role === 'ADMIN' || currentUser.role === 'SUB_ADMIN') {
       fetch('/api/users')
         .then((res) => res.json())
         .then((data) => {
@@ -122,6 +125,7 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
     const selected = authorsList.find((u) => u.id === newAuthorId);
     if (selected) {
       setAuthorName(selected.name);
+      setAuthorTitle(selected.displayTitle || '');
     }
   };
 
@@ -160,6 +164,7 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
         galleryImages,
         authorId: currentUser.role === 'CONTRIBUTOR' ? currentUser.id : authorId,
         authorName: currentUser.role === 'CONTRIBUTOR' ? currentUser.name : authorName,
+        authorTitle: currentUser.role === 'CONTRIBUTOR' ? currentUser.displayTitle : authorTitle,
         scheduledPublishAt: finalStatus === 'SCHEDULED' ? scheduledPublishAt : undefined,
         translations: {
           bn: {
@@ -559,6 +564,11 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="font-bold text-xs text-white block truncate">{currentUser.name}</span>
+                  {currentUser.displayTitle && (
+                    <span className="text-[10px] text-amber-400 font-bold block truncate">
+                      {currentUser.displayTitle}
+                    </span>
+                  )}
                   <span className="text-[10px] text-zinc-500 flex items-center gap-1 mt-0.5">
                     <Lock className="w-3 h-3 text-zinc-500" /> Locked to your account
                   </span>
@@ -574,13 +584,18 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
                   {authorsList.length > 0 ? (
                     authorsList.map((author) => (
                       <option key={author.id} value={author.id}>
-                        {author.name} ({author.role})
+                        {author.name} {author.displayTitle ? `• ${author.displayTitle}` : `(${author.role})`}
                       </option>
                     ))
                   ) : (
                     <option value={authorId}>{authorName || 'Current Author'}</option>
                   )}
                 </select>
+                {authorTitle && (
+                  <p className="text-[10px] text-brand-400 font-medium">
+                    Byline: <span className="text-zinc-300 font-bold">{authorTitle}</span>
+                  </p>
+                )}
                 <p className="text-[10px] text-zinc-500">
                   Reassign article attribution to any registered newsroom reporter or contributor.
                 </p>

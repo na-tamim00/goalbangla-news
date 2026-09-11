@@ -167,8 +167,13 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         {/* Byline & Date */}
         <div className="flex flex-wrap items-center justify-between gap-4 py-3 border-y border-zinc-200 dark:border-zinc-800 text-xs text-zinc-500">
           <div className="flex items-center gap-2 text-zinc-800 dark:text-zinc-200 font-bold">
-            <User className="w-4 h-4 text-brand-500" />
-            <span>{dict.common.byAuthor} {post.authorName || 'GoalBangla Reporter'}</span>
+            <User className="w-4 h-4 text-brand-500 shrink-0" />
+            <span>
+              {dict.common.byAuthor} {post.authorName || 'GoalBangla Reporter'}
+              {post.authorTitle && (
+                <span className="text-zinc-500 font-normal ml-1">({post.authorTitle})</span>
+              )}
+            </span>
           </div>
 
           <div className="flex items-center gap-1.5 text-zinc-400">

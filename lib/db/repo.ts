@@ -168,6 +168,21 @@ class DataRepository {
   }
 
   // Auth & User Methods
+  async hasUsers(): Promise<boolean> {
+    return this.users.size > 0;
+  }
+
+  async getUserCount(): Promise<number> {
+    return this.users.size;
+  }
+
+  async getUserById(id: string): Promise<UserRecord | null> {
+    for (const user of this.users.values()) {
+      if (user.id === id) return user;
+    }
+    return null;
+  }
+
   async getUserByEmail(email: string): Promise<UserRecord | null> {
     return this.users.get(email.toLowerCase()) || null;
   }
@@ -184,8 +199,13 @@ class DataRepository {
   async updateUser(id: string, updates: Partial<UserRecord>): Promise<UserRecord | null> {
     for (const [key, user] of this.users.entries()) {
       if (user.id === id) {
-        const updated: UserRecord = { ...user, ...updates };
-        this.users.set(key, updated);
+        const updated: UserRecord = { ...user, ...updates, updatedAt: new Date().toISOString() };
+        if (updates.email && updates.email.toLowerCase() !== key) {
+          this.users.delete(key);
+          this.users.set(updates.email.toLowerCase(), updated);
+        } else {
+          this.users.set(key, updated);
+        }
         return updated;
       }
     }

@@ -54,14 +54,16 @@ export async function PUT(
       // Lock author to self
       delete body.authorId;
       delete body.authorName;
+      delete body.authorTitle;
     } else {
-      // Admin or Editor can reassign author
+      // Admin or Sub-Admin can reassign author
       if (body.authorId && body.authorId !== post.authorId) {
         const allUsers = await repo.getAllUsers();
         const assigned = allUsers.find((u) => u.id === body.authorId);
         if (assigned) {
           body.authorId = assigned.id;
           body.authorName = assigned.name;
+          body.authorTitle = assigned.displayTitle || body.authorTitle;
         }
       }
     }

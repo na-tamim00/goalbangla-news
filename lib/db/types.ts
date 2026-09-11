@@ -1,4 +1,5 @@
-export type Role = 'ADMIN' | 'EDITOR' | 'CONTRIBUTOR';
+export type Role = 'ADMIN' | 'SUB_ADMIN' | 'CONTRIBUTOR';
+export type UserStatus = 'ACTIVE' | 'PENDING_VERIFICATION';
 export type PostType = 'ARTICLE' | 'VIDEO' | 'AUDIO' | 'GALLERY';
 export type PostStatus = 'DRAFT' | 'IN_REVIEW' | 'SCHEDULED' | 'PUBLISHED';
 
@@ -35,6 +36,7 @@ export interface PostData {
   galleryImages?: GalleryImage[];
   authorId: string;
   authorName?: string;
+  authorTitle?: string;
   scheduledPublishAt?: string;
   publishedAt?: string;
   viewCount: number;
@@ -49,7 +51,15 @@ export interface UserRecord {
   passwordHash: string;
   name: string;
   role: Role;
+  displayTitle?: string;
   avatarUrl?: string;
+  status: UserStatus;
+  verificationCodeHash?: string;
+  verificationExpiresAt?: string;
+  verificationAttempts?: number;
+  mustChangePassword?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface MediaRecord {
