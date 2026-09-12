@@ -39,3 +39,6 @@ yarn-error.log*
 # uploaded media files
 public/uploads/*
 !public/uploads/.gitkeep
+
+.vercel
+.env*

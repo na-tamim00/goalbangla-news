@@ -4,7 +4,7 @@ import { seedPosts } from './seed-data';
 import { Fixture } from '../football/types';
 import { prisma } from './prisma';
 
-const persistent = Boolean(process.env.DATABASE_URL);
+const persistent = /^postgres(?:ql)?:\/\//i.test(process.env.DATABASE_URL || '');
 const iso = (value: Date | null | undefined) => value?.toISOString();
 
 function postData(post: any): PostData {
