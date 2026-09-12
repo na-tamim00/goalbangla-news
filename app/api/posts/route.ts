@@ -8,7 +8,6 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get('category') || undefined;
     const leagueTag = searchParams.get('leagueTag') || undefined;
     const type = searchParams.get('type') as any || undefined;
-    const status = searchParams.get('status') as any || undefined;
     const search = searchParams.get('search') || undefined;
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined;
     const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!, 10) : undefined;
@@ -38,7 +37,7 @@ export async function GET(req: NextRequest) {
       category,
       leagueTag,
       type,
-      status: status || 'PUBLISHED',
+      status: 'PUBLISHED',
       search,
       limit,
       offset,

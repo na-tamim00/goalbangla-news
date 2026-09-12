@@ -11,19 +11,6 @@ const nextConfig = {
       { protocol: 'https', hostname: 'placehold.co' },
     ],
   },
-  async rewrites() {
-    const backendUrl = process.env.BACKEND_VERCEL_URL;
-    if (backendUrl && backendUrl.startsWith('http')) {
-      const cleanUrl = backendUrl.replace(/\/$/, '');
-      return [
-        {
-          source: '/api/:path*',
-          destination: `${cleanUrl}/api/:path*`,
-        },
-      ];
-    }
-    return [];
-  },
 }
 
 module.exports = nextConfig

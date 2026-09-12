@@ -57,7 +57,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Local public/uploads fallback (for development & servers with disk access)
+    if (!mediaUrl && process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { error: 'Media storage is not configured. Add Cloudinary credentials before uploading.' },
+        { status: 503 }
+      );
+    }
+
+    // Local filesystem is intentionally development-only; serverless disks are ephemeral.
     if (!mediaUrl) {
       try {
         const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
@@ -68,9 +75,7 @@ export async function POST(req: NextRequest) {
         fs.writeFileSync(filePath, buffer);
         mediaUrl = `/uploads/${uniqueFilename}`;
       } catch (fsErr) {
-        // 3. In-memory / Data URL fallback for read-only serverless runtimes
-        const base64 = buffer.toString('base64');
-        mediaUrl = `data:${mimeType};base64,${base64}`;
+        return NextResponse.json({ error: 'Local media storage is unavailable.' }, { status: 503 });
       }
     }
 

@@ -33,50 +33,50 @@ enum PostStatus {
 }
 
 model User {
-  id                     String      @id @default(cuid())
-  email                  String      @unique
-  passwordHash           String
-  name                   String
-  role                   Role        @default(CONTRIBUTOR)
-  displayTitle           String?
-  status                 UserStatus  @default(ACTIVE)
-  verificationCodeHash   String?
+  id                    String     @id @default(cuid())
+  email                 String     @unique
+  passwordHash          String
+  name                  String
+  role                  Role       @default(CONTRIBUTOR)
+  displayTitle          String?
+  status                UserStatus @default(ACTIVE)
+  verificationCodeHash  String?
   verificationExpiresAt DateTime?
-  verificationAttempts   Int         @default(0)
-  mustChangePassword     Boolean     @default(false)
-  avatarUrl              String?
-  posts                  Post[]
-  media                  Media[]
-  createdAt              DateTime    @default(now())
-  updatedAt              DateTime    @updatedAt
+  verificationAttempts  Int        @default(0)
+  mustChangePassword    Boolean    @default(false)
+  avatarUrl             String?
+  posts                 Post[]
+  media                 Media[]
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
 }
 
 model Post {
-  id                 String            @id @default(cuid())
-  slug               String            @unique
-  type               PostType          @default(ARTICLE)
-  status             PostStatus        @default(DRAFT)
-  category           String
-  leagueTag          String
-  featuredImage      String?
-  videoUrl           String?
-  videoTranscript    String?
-  audioUrl           String?
-  audioShowNotes     String?
-  galleryImages      Json?
-  
-  authorId           String
-  authorName         String?
-  authorTitle        String?
-  author             User              @relation(fields: [authorId], references: [id])
-  
+  id              String     @id @default(cuid())
+  slug            String     @unique
+  type            PostType   @default(ARTICLE)
+  status          PostStatus @default(DRAFT)
+  category        String
+  leagueTag       String
+  featuredImage   String?
+  videoUrl        String?
+  videoTranscript String?
+  audioUrl        String?
+  audioShowNotes  String?
+  galleryImages   Json?
+
+  authorId    String
+  authorName  String?
+  authorTitle String?
+  author      User    @relation(fields: [authorId], references: [id])
+
   scheduledPublishAt DateTime?
   publishedAt        DateTime?
-  viewCount          Int               @default(0)
-  
-  translations       PostTranslation[]
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  viewCount          Int       @default(0)
+
+  translations PostTranslation[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   @@index([category])
   @@index([leagueTag])
@@ -156,4 +156,10 @@ model Media {
   uploadedById String
   uploadedBy   User     @relation(fields: [uploadedById], references: [id])
   createdAt    DateTime @default(now())
+}
+
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
 }

@@ -43,7 +43,7 @@ class FootballDataProvider implements FootballService {
         if (res.ok) {
           const json = await res.json();
           const items = json.response || json.data || (Array.isArray(json) ? json : null);
-          if (items && Array.isArray(items) && items.length > 0) {
+          if (Array.isArray(items)) {
             const mapped: Fixture[] = items.map((item: any, idx: number) => {
               const home = item.teams?.home || item.homeTeam || item.home || {};
               const away = item.teams?.away || item.awayTeam || item.away || {};
@@ -82,8 +82,10 @@ class FootballDataProvider implements FootballService {
       }
     }
 
-    // Default authentic live simulated matches
-    return mockFixtures.filter((f) => f.status === 'LIVE');
+    // Demo fixtures are useful locally, but must never be presented as real live scores.
+    return process.env.NODE_ENV === 'production'
+      ? []
+      : mockFixtures.filter((f) => f.status === 'LIVE');
   }
 
   async getLeagueFixtures(leagueId?: string): Promise<Fixture[]> {

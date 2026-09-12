@@ -12,6 +12,8 @@ interface StatsPageProps {
   params: { locale: Locale };
 }
 
+export const revalidate = 60;
+
 export default async function StatsPage({ params }: StatsPageProps) {
   const { locale } = params;
   const dict = getDictionary(locale);

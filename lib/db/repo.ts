@@ -1,330 +1,86 @@
+import { Prisma } from '@prisma/client';
 import { PostData, PostStatus, PostType, UserRecord, MediaRecord } from './types';
-import { seedPosts, seedUsers } from './seed-data';
+import { seedPosts } from './seed-data';
 import { Fixture } from '../football/types';
+import { prisma } from './prisma';
 
-class DataRepository {
-  private posts: Map<string, PostData>;
-  private users: Map<string, UserRecord>;
-  private media: MediaRecord[];
-  private standingsOverrides: Map<string, any>;
+const persistent = Boolean(process.env.DATABASE_URL);
+const iso = (value: Date | null | undefined) => value?.toISOString();
 
-  constructor() {
-    this.posts = new Map();
-    this.users = new Map();
-    this.media = [];
-    this.standingsOverrides = new Map();
-
-    // Initialize with seed data
-    for (const post of seedPosts) {
-      this.posts.set(post.id, post);
-    }
-    for (const user of seedUsers) {
-      this.users.set(user.email.toLowerCase(), user);
-    }
-
-    // Default media items
-    this.media = [
-      {
-        id: 'med-1',
-        filename: 'kings-arena-stadium.jpg',
-        url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
-        mimeType: 'image/jpeg',
-        sizeBytes: 420000,
-        uploadedById: 'user-admin',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'med-2',
-        filename: 'etihad-matchday.jpg',
-        url: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1200&q=80',
-        mimeType: 'image/jpeg',
-        sizeBytes: 512000,
-        uploadedById: 'user-editor',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'med-3',
-        filename: 'bernabeu-lights.jpg',
-        url: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=1200&q=80',
-        mimeType: 'image/jpeg',
-        sizeBytes: 630000,
-        uploadedById: 'user-admin',
-        createdAt: new Date().toISOString(),
-      },
-    ];
-  }
-
-  // Posts Methods
-  async getPosts(options: {
-    type?: PostType;
-    status?: PostStatus;
-    category?: string;
-    leagueTag?: string;
-    language?: 'bn' | 'en';
-    search?: string;
-    limit?: number;
-    offset?: number;
-  } = {}): Promise<{ posts: PostData[]; total: number }> {
-    let list = Array.from(this.posts.values());
-
-    if (options.status) {
-      list = list.filter((p) => p.status === options.status);
-    } else {
-      // By default for public feed, show PUBLISHED
-      list = list.filter((p) => p.status === 'PUBLISHED');
-    }
-
-    if (options.type) {
-      list = list.filter((p) => p.type === options.type);
-    }
-
-    if (options.category && options.category !== 'ALL') {
-      list = list.filter((p) => p.category.toLowerCase() === options.category?.toLowerCase());
-    }
-
-    if (options.leagueTag && options.leagueTag !== 'ALL') {
-      list = list.filter((p) => p.leagueTag.toLowerCase() === options.leagueTag?.toLowerCase());
-    }
-
-    if (options.search) {
-      const q = options.search.toLowerCase();
-      list = list.filter((p) => {
-        const bnTitle = p.translations.bn?.title?.toLowerCase() || '';
-        const enTitle = p.translations.en?.title?.toLowerCase() || '';
-        const bnTags = (p.translations.bn?.tags || []).join(' ').toLowerCase();
-        const enTags = (p.translations.en?.tags || []).join(' ').toLowerCase();
-        return bnTitle.includes(q) || enTitle.includes(q) || bnTags.includes(q) || enTags.includes(q);
-      });
-    }
-
-    // Sort by publishedAt desc, fallback to createdAt
-    list.sort((a, b) => {
-      const timeA = new Date(a.publishedAt || a.createdAt).getTime();
-      const timeB = new Date(b.publishedAt || b.createdAt).getTime();
-      return timeB - timeA;
-    });
-
-    const total = list.length;
-    const offset = options.offset || 0;
-    const limit = options.limit || 50;
-    const paginated = list.slice(offset, offset + limit);
-
-    return { posts: paginated, total };
-  }
-
-  async getAllPostsAdmin(): Promise<PostData[]> {
-    return Array.from(this.posts.values()).sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
-  }
-
-  async getPostBySlug(slug: string): Promise<PostData | null> {
-    for (const post of Array.from(this.posts.values())) {
-      if (post.slug === slug) return post;
-    }
-    return null;
-  }
-
-  async getPostById(id: string): Promise<PostData | null> {
-    return this.posts.get(id) || null;
-  }
-
-  async createPost(data: Omit<PostData, 'id' | 'createdAt' | 'updatedAt' | 'viewCount'>): Promise<PostData> {
-    const id = `post-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const now = new Date().toISOString();
-    const newPost: PostData = {
-      ...data,
-      id,
-      viewCount: 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.posts.set(id, newPost);
-    return newPost;
-  }
-
-  async updatePost(id: string, updates: Partial<PostData>): Promise<PostData | null> {
-    const existing = this.posts.get(id);
-    if (!existing) return null;
-
-    const updated: PostData = {
-      ...existing,
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
-    this.posts.set(id, updated);
-    return updated;
-  }
-
-  async deletePost(id: string): Promise<boolean> {
-    return this.posts.delete(id);
-  }
-
-  async incrementViewCount(slug: string): Promise<void> {
-    const post = await this.getPostBySlug(slug);
-    if (post) {
-      post.viewCount = (post.viewCount || 0) + 1;
-    }
-  }
-
-  // Auth & User Methods
-  async hasUsers(): Promise<boolean> {
-    return this.users.size > 0;
-  }
-
-  async getUserCount(): Promise<number> {
-    return this.users.size;
-  }
-
-  async getUserById(id: string): Promise<UserRecord | null> {
-    for (const user of this.users.values()) {
-      if (user.id === id) return user;
-    }
-    return null;
-  }
-
-  async getUserByEmail(email: string): Promise<UserRecord | null> {
-    return this.users.get(email.toLowerCase()) || null;
-  }
-
-  async getAllUsers(): Promise<UserRecord[]> {
-    return Array.from(this.users.values());
-  }
-
-  async createUser(user: UserRecord): Promise<UserRecord> {
-    this.users.set(user.email.toLowerCase(), user);
-    return user;
-  }
-
-  async updateUser(id: string, updates: Partial<UserRecord>): Promise<UserRecord | null> {
-    for (const [key, user] of this.users.entries()) {
-      if (user.id === id) {
-        const updated: UserRecord = { ...user, ...updates, updatedAt: new Date().toISOString() };
-        if (updates.email && updates.email.toLowerCase() !== key) {
-          this.users.delete(key);
-          this.users.set(updates.email.toLowerCase(), updated);
-        } else {
-          this.users.set(key, updated);
-        }
-        return updated;
-      }
-    }
-    return null;
-  }
-
-  async deleteUser(id: string): Promise<boolean> {
-    for (const [key, user] of this.users.entries()) {
-      if (user.id === id) {
-        return this.users.delete(key);
-      }
-    }
-    return false;
-  }
-
-  // Media Methods
-  async getMedia(): Promise<MediaRecord[]> {
-    return this.media;
-  }
-
-  async addMedia(item: Omit<MediaRecord, 'id' | 'createdAt'>): Promise<MediaRecord> {
-    const newMedia: MediaRecord = {
-      ...item,
-      id: `med-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    this.media.unshift(newMedia);
-    return newMedia;
-  }
-
-  // Standings Override Methods
-  async getStandingsOverrides(leagueId: string): Promise<any | null> {
-    return this.standingsOverrides.get(leagueId.toLowerCase()) || null;
-  }
-
-  async saveStandingsOverride(leagueId: string, data: any): Promise<void> {
-    this.standingsOverrides.set(leagueId.toLowerCase(), data);
-  }
-
-  // Auto-Match-Report Draft Generator Workflow
-  async generateMatchReportDraft(match: Fixture, authorId: string = 'user-editor'): Promise<PostData> {
-    const home = match.homeTeam.name;
-    const away = match.awayTeam.name;
-    const homeScore = match.homeScore ?? 0;
-    const awayScore = match.awayScore ?? 0;
-    const competition = match.competition;
-
-    const slug = `match-report-${home.toLowerCase().replace(/\s+/g, '-')}-vs-${away.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-
-    const eventsTextBn = (match.events || [])
-      .map((e) => `* ${e.minute}': ${e.type === 'GOAL' ? '⚽ গোল' : e.type} — ${e.player} (${e.team === 'home' ? home : away})`)
-      .join('\n');
-
-    const eventsTextEn = (match.events || [])
-      .map((e) => `* ${e.minute}': ${e.type === 'GOAL' ? '⚽ GOAL' : e.type} — ${e.player} (${e.team === 'home' ? home : away})`)
-      .join('\n');
-
-    const draft: Omit<PostData, 'id' | 'createdAt' | 'updatedAt' | 'viewCount'> = {
-      slug,
-      type: 'ARTICLE',
-      status: 'DRAFT', // Must be reviewed by editor before publishing
-      category: 'MATCH_REPORTS',
-      leagueTag: match.leagueId.toUpperCase(),
-      featuredImage: match.homeTeam.logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
-      authorId,
-      authorName: 'অটো রিপোর্টার (AI Match Bot)',
-      translations: {
-        bn: {
-          language: 'bn',
-          title: `ম্যাচ রিপোর্ট: ${home} ${homeScore} - ${awayScore} ${away}`,
-          excerpt: `${competition}-এ শেষ হলো টানটান উত্তেজনার ম্যাচ। ${home} ও ${away}-এর লড়াইয়ে ফলাফল ${homeScore}-${awayScore}।`,
-          content: `
-## মাঠের উত্তেজনা ও ফলাফল
-
-${competition}-এর হাইভোল্টেজ ম্যাচে মুখোমুখি হয়েছিল ${home} এবং ${away}। নির্ধারিত ৯০ মিনিটের রোমাঞ্চকর লড়াই শেষে ম্যাচটির ফলাফল দাঁড়ায় **${homeScore} - ${awayScore}**।
-
-### মূল ঘটনাবলী
-${eventsTextBn || 'ম্যাচে কোনো উল্লেখযোগ্য কার্ড বা গোল নথিভুক্ত হয়নি।'}
-
-### পরিসংখ্যান
-* **বল দখল:** ${home} ${match.stats?.possession[0] || 50}% — ${away} ${match.stats?.possession[1] || 50}%
-* **মোট শট:** ${match.stats?.shots[0] || 0} — ${match.stats?.shots[1] || 0}
-* **টার্গেটে শট:** ${match.stats?.shotsOnTarget[0] || 0} — ${match.stats?.shotsOnTarget[1] || 0}
-
-*(এই ড্রাফটটি স্বয়ংক্রিয়ভাবে তৈরি হয়েছে। অনুগ্রহ করে সম্পাদনা ও অনুমোদন করুন)*
-          `,
-          seoTitle: `${home} ${homeScore}-${awayScore} ${away}: ম্যাচ রিপোর্ট | গোলবাংলা`,
-          seoDescription: `${home} বনাম ${away} ম্যাচের পূর্ণাঙ্গ স্কোর ও পরিসংখ্যান।`,
-          tags: [home, away, competition, 'ম্যাচ রিপোর্ট'],
-        },
-        en: {
-          language: 'en',
-          title: `Match Report: ${home} ${homeScore} - ${awayScore} ${away}`,
-          excerpt: `Full-time whistle blows in ${competition} as ${home} and ${away} finish ${homeScore}-${awayScore}.`,
-          content: `
-## Match Summary & Tactical Overview
-
-A competitive encounter in the ${competition} saw ${home} take on ${away}. Following an eventful ninety minutes, the scoreline ended **${homeScore} - ${awayScore}**.
-
-### Match Key Timeline
-${eventsTextEn || 'No key events recorded.'}
-
-### Statistics
-* **Possession:** ${home} ${match.stats?.possession[0] || 50}% — ${away} ${match.stats?.possession[1] || 50}%
-* **Total Shots:** ${match.stats?.shots[0] || 0} — ${match.stats?.shots[1] || 0}
-* **Shots on Target:** ${match.stats?.shotsOnTarget[0] || 0} — ${match.stats?.shotsOnTarget[1] || 0}
-
-*(Auto-drafted by GoalBangla Match Bot. Please review and approve before publishing)*
-          `,
-          seoTitle: `${home} ${homeScore}-${awayScore} ${away}: Full-Time Report | GoalBangla`,
-          seoDescription: `Full match report and key numbers from ${home} vs ${away}.`,
-          tags: [home, away, competition, 'Match Report'],
-        },
-      },
-    };
-
-    return await this.createPost(draft);
-  }
+function postData(post: any): PostData {
+  const translations: any = {};
+  for (const translation of post.translations || []) translations[translation.language] = translation;
+  return { ...post, translations, galleryImages: post.galleryImages || undefined,
+    featuredImage: post.featuredImage || undefined, authorName: post.authorName || undefined,
+    authorTitle: post.authorTitle || undefined, scheduledPublishAt: iso(post.scheduledPublishAt),
+    publishedAt: iso(post.publishedAt), createdAt: post.createdAt.toISOString(), updatedAt: post.updatedAt.toISOString() };
 }
 
-// Global repository singleton
+function userData(user: any): UserRecord {
+  return { ...user, displayTitle: user.displayTitle || undefined, avatarUrl: user.avatarUrl || undefined,
+    verificationCodeHash: user.verificationCodeHash || undefined, verificationExpiresAt: iso(user.verificationExpiresAt),
+    createdAt: iso(user.createdAt), updatedAt: iso(user.updatedAt) };
+}
+
+class DataRepository {
+  private posts = new Map(seedPosts.map((p) => [p.id, p]));
+  private users = new Map<string, UserRecord>();
+  private media: MediaRecord[] = [];
+  private overrides = new Map<string, any>();
+
+  private memoryPosts(options: any = {}) {
+    let list = [...this.posts.values()].filter((p) => p.status === (options.status || 'PUBLISHED'));
+    if (options.type) list = list.filter((p) => p.type === options.type);
+    if (options.category && options.category !== 'ALL') list = list.filter((p) => p.category.toLowerCase() === options.category.toLowerCase());
+    if (options.leagueTag && options.leagueTag !== 'ALL') list = list.filter((p) => p.leagueTag.toLowerCase() === options.leagueTag.toLowerCase());
+    if (options.search) { const q=options.search.toLowerCase(); list=list.filter((p)=>Object.values(p.translations).some((t)=>`${t.title} ${t.tags.join(' ')}`.toLowerCase().includes(q))); }
+    list.sort((a,b)=>+new Date(b.publishedAt||b.createdAt)-+new Date(a.publishedAt||a.createdAt));
+    const total=list.length, offset=options.offset||0; return {posts:list.slice(offset,offset+(options.limit||50)),total};
+  }
+
+  async getPosts(options: {type?:PostType;status?:PostStatus;category?:string;leagueTag?:string;language?:'bn'|'en';search?:string;limit?:number;offset?:number}={}) {
+    if (!persistent) return this.memoryPosts(options);
+    const where: Prisma.PostWhereInput = { status: options.status || 'PUBLISHED' };
+    if(options.type) where.type=options.type;
+    if(options.category&&options.category!=='ALL') where.category={equals:options.category,mode:'insensitive'};
+    if(options.leagueTag&&options.leagueTag!=='ALL') where.leagueTag={equals:options.leagueTag,mode:'insensitive'};
+    if(options.search) where.translations={some:{title:{contains:options.search,mode:'insensitive'}}};
+    const [rows,total]=await prisma.$transaction([prisma.post.findMany({where,include:{translations:true},orderBy:[{publishedAt:'desc'},{createdAt:'desc'}],skip:options.offset||0,take:options.limit||50}),prisma.post.count({where})]);
+    if(!total&&!options.search&&(options.status||'PUBLISHED')==='PUBLISHED') return this.memoryPosts(options);
+    return {posts:rows.map(postData),total};
+  }
+  async getAllPostsAdmin(){if(!persistent)return [...this.posts.values()].sort((a,b)=>+new Date(b.updatedAt)-+new Date(a.updatedAt));return (await prisma.post.findMany({include:{translations:true},orderBy:{updatedAt:'desc'}})).map(postData)}
+  async getPostBySlug(slug:string){if(!persistent)return [...this.posts.values()].find(p=>p.slug===slug)||null;const row=await prisma.post.findUnique({where:{slug},include:{translations:true}});return row?postData(row):null}
+  async getPostById(id:string){if(!persistent)return this.posts.get(id)||null;const row=await prisma.post.findUnique({where:{id},include:{translations:true}});return row?postData(row):null}
+  async createPost(data:Omit<PostData,'id'|'createdAt'|'updatedAt'|'viewCount'>){
+    if(!persistent){const now=new Date().toISOString(),row={...data,id:`post-${Date.now()}`,viewCount:0,createdAt:now,updatedAt:now} as PostData;this.posts.set(row.id,row);return row}
+    const row=await prisma.post.create({data:{slug:data.slug,type:data.type,status:data.status,category:data.category,leagueTag:data.leagueTag,featuredImage:data.featuredImage,videoUrl:data.videoUrl,videoTranscript:data.videoTranscript,audioUrl:data.audioUrl,audioShowNotes:data.audioShowNotes,galleryImages:data.galleryImages as any,authorId:data.authorId,authorName:data.authorName,authorTitle:data.authorTitle,scheduledPublishAt:data.scheduledPublishAt?new Date(data.scheduledPublishAt):null,publishedAt:data.publishedAt?new Date(data.publishedAt):null,translations:{create:Object.values(data.translations).map(t=>({language:t.language,title:t.title,excerpt:t.excerpt,content:t.content,seoTitle:t.seoTitle,seoDescription:t.seoDescription,tags:t.tags||[]}))}},include:{translations:true}});return postData(row)
+  }
+  async updatePost(id:string,updates:Partial<PostData>){
+    if(!persistent){const old=this.posts.get(id);if(!old)return null;const row={...old,...updates,updatedAt:new Date().toISOString()};this.posts.set(id,row);return row}
+    const {translations,id:_id,createdAt,updatedAt,viewCount,...data}:any=updates;
+    for(const k of ['scheduledPublishAt','publishedAt'])if(k in data)data[k]=data[k]?new Date(data[k]):null;
+    if('galleryImages'in data&&data.galleryImages===undefined)data.galleryImages=Prisma.JsonNull;
+    if(translations)data.translations={upsert:Object.values(translations).map((t:any)=>({where:{postId_language:{postId:id,language:t.language}},create:{language:t.language,title:t.title,excerpt:t.excerpt,content:t.content,seoTitle:t.seoTitle,seoDescription:t.seoDescription,tags:t.tags||[]},update:{title:t.title,excerpt:t.excerpt,content:t.content,seoTitle:t.seoTitle,seoDescription:t.seoDescription,tags:t.tags||[]}}))};
+    const row=await prisma.post.update({where:{id},data,include:{translations:true}});return postData(row)
+  }
+  async deletePost(id:string){if(!persistent)return this.posts.delete(id);try{await prisma.post.delete({where:{id}});return true}catch{return false}}
+  async incrementViewCount(slug:string){if(!persistent){const p=await this.getPostBySlug(slug);if(p)p.viewCount++}else await prisma.post.update({where:{slug},data:{viewCount:{increment:1}}}).catch(()=>{})}
+
+  async hasUsers(){return(await this.getUserCount())>0}
+  async getUserCount(){return persistent?prisma.user.count():this.users.size}
+  async getUserById(id:string){if(!persistent)return [...this.users.values()].find(u=>u.id===id)||null;const u=await prisma.user.findUnique({where:{id}});return u?userData(u):null}
+  async getUserByEmail(email:string){if(!persistent)return this.users.get(email.toLowerCase())||null;const u=await prisma.user.findUnique({where:{email:email.toLowerCase()}});return u?userData(u):null}
+  async getAllUsers(){if(!persistent)return [...this.users.values()];return(await prisma.user.findMany({orderBy:{createdAt:'asc'}})).map(userData)}
+  async createUser(user:UserRecord){if(!persistent){this.users.set(user.email.toLowerCase(),user);return user}const u=await prisma.user.create({data:{...user,verificationExpiresAt:user.verificationExpiresAt?new Date(user.verificationExpiresAt):null,createdAt:user.createdAt?new Date(user.createdAt):undefined,updatedAt:user.updatedAt?new Date(user.updatedAt):undefined} as any});return userData(u)}
+  async updateUser(id:string,updates:Partial<UserRecord>){if(!persistent){const u=await this.getUserById(id);if(!u)return null;this.users.delete(u.email.toLowerCase());const v={...u,...updates,updatedAt:new Date().toISOString()};this.users.set(v.email.toLowerCase(),v);return v}const data:any={...updates};if('verificationExpiresAt'in data)data.verificationExpiresAt=data.verificationExpiresAt?new Date(data.verificationExpiresAt):null;const u=await prisma.user.update({where:{id},data});return userData(u)}
+  async deleteUser(id:string){if(!persistent){const u=await this.getUserById(id);return u?this.users.delete(u.email.toLowerCase()):false}try{await prisma.user.delete({where:{id}});return true}catch{return false}}
+
+  async getMedia(){if(!persistent)return this.media;return(await prisma.media.findMany({orderBy:{createdAt:'desc'}})).map(m=>({...m,createdAt:m.createdAt.toISOString()}))}
+  async addMedia(item:Omit<MediaRecord,'id'|'createdAt'>){if(!persistent){const row={...item,id:`med-${Date.now()}`,createdAt:new Date().toISOString()};this.media.unshift(row);return row}const m=await prisma.media.create({data:item});return{...m,createdAt:m.createdAt.toISOString()}}
+  async getStandingsOverrides(leagueId:string){if(!persistent)return this.overrides.get(leagueId.toLowerCase())||null;const row=await prisma.siteSetting.findUnique({where:{key:`standings:${leagueId.toLowerCase()}`}});return row?.value||null}
+  async saveStandingsOverride(leagueId:string,data:any){if(!persistent){this.overrides.set(leagueId.toLowerCase(),data);return}await prisma.siteSetting.upsert({where:{key:`standings:${leagueId.toLowerCase()}`},create:{key:`standings:${leagueId.toLowerCase()}`,value:data},update:{value:data}})}
+  async generateMatchReportDraft(match:Fixture,authorId:string){const home=match.homeTeam.name,away=match.awayTeam.name,hs=match.homeScore??0,as=match.awayScore??0,user=await this.getUserById(authorId);return this.createPost({slug:`match-report-${home}-${away}-${Date.now()}`.toLowerCase().replace(/[^a-z0-9]+/g,'-'),type:'ARTICLE',status:'DRAFT',category:'MATCH_REPORTS',leagueTag:match.leagueId.toUpperCase(),featuredImage:match.homeTeam.logo,authorId,authorName:user?.name||'GoalBangla Desk',authorTitle:user?.displayTitle||'Editor',translations:{bn:{language:'bn',title:`ম্যাচ রিপোর্ট: ${home} ${hs}-${as} ${away}`,excerpt:`${match.competition}-এ ফল ${hs}-${as}।`,content:`## ম্যাচ রিপোর্ট\n\n${home} ও ${away}-এর ম্যাচটি ${hs}-${as} গোলে শেষ হয়েছে। প্রকাশের আগে তথ্য যাচাই করুন।`,tags:[home,away,'ম্যাচ রিপোর্ট']},en:{language:'en',title:`Match report: ${home} ${hs}-${as} ${away}`,excerpt:`${home} and ${away} finished ${hs}-${as}.`,content:`## Match report\n\n${home} and ${away} finished ${hs}-${as}. Verify details before publishing.`,tags:[home,away,'Match report']}}})}
+}
+
 export const repo = new DataRepository();

@@ -11,6 +11,12 @@ export async function GET(
     if (!post) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
+    if (post.status !== 'PUBLISHED') {
+      const user = await getSessionUser();
+      if (!user || (user.role === 'CONTRIBUTOR' && post.authorId !== user.id)) {
+        return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+      }
+    }
     return NextResponse.json({ post });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });

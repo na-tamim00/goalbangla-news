@@ -26,9 +26,7 @@ export default function LiveScoreTicker({ locale, initialMatches }: LiveScoreTic
         const res = await fetch('/api/matches?status=LIVE');
         if (res.ok) {
           const data = await res.json();
-          if (data.matches && data.matches.length > 0) {
-            setMatches(data.matches);
-          }
+          if (Array.isArray(data.matches)) setMatches(data.matches);
         }
       } catch (err) {
         // silent fallback to current matches

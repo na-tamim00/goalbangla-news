@@ -7,7 +7,9 @@ export async function GET(req: NextRequest) {
     const leagueId = searchParams.get('leagueId') || undefined;
     const status = searchParams.get('status') || undefined;
 
-    let matches = await footballService.getLeagueFixtures(leagueId);
+    let matches = status === 'LIVE'
+      ? await footballService.getLiveScores()
+      : await footballService.getLeagueFixtures(leagueId);
 
     if (status === 'LIVE') {
       matches = matches.filter((m) => m.status === 'LIVE');

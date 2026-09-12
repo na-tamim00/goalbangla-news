@@ -9,6 +9,8 @@ interface EditorialPageProps {
   params: { locale: Locale };
 }
 
+export const revalidate = 60;
+
 export default async function EditorialPage({ params }: EditorialPageProps) {
   const { locale } = params;
   const dict = getDictionary(locale);
