@@ -4,7 +4,7 @@ export const dictionaries = {
   bn: {
     siteName: 'গোলবাংলা',
     siteTagline: 'ফুটবলের নির্ভীক কণ্ঠস্বর',
-    siteDescription: 'বাংলায় বিশ্ব ফুটবলের সার্বক্ষণিক রোমাঞ্চ, লাইভ স্কোর, ম্যাচ সেন্টার, বিশ্লেষণ ও দেশীয় ফুটবলের পুঙ্খানুপুঙ্খ আপডেট।',
+    siteDescription: 'বাংলায় বিশ্ব ফুটবলের সার্বক্ষণিক রোমাঞ্চ, ব্রেকিং নিউজ, বিশ্লেষণ ও দেশীয় ফুটবলের পুঙ্খানুপুঙ্খ আপডেট।',
     nav: {
       home: 'প্রচ্ছদ',
       liveScores: 'লাইভ স্কোর',
@@ -126,7 +126,7 @@ export const dictionaries = {
   en: {
     siteName: 'GoalBangla',
     siteTagline: "Football's Trusted Voice",
-    siteDescription: 'Live scores, breaking news, transfer buzz, tactical analysis, match center, and in-depth coverage of Bangladesh and world football.',
+    siteDescription: 'Breaking news, transfer buzz, tactical analysis, and in-depth coverage of Bangladesh and world football.',
     nav: {
       home: 'Home',
       liveScores: 'Live Scores',
