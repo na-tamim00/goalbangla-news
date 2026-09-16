@@ -4,9 +4,7 @@ import { Locale, locales } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import Header from '@/components/Header';
-import LiveScoreTicker from '@/components/LiveScoreTicker';
 import Footer from '@/components/Footer';
-import { footballService } from '@/lib/football/service';
 
 const bengaliFont = Hind_Siliguri({
   weight: ['400', '500', '600', '700'],
@@ -106,14 +104,9 @@ export default async function LocaleLayout({
   children: React.ReactNode;
   params: { locale: Locale };
 }) {
-  const liveMatches = await footballService.getLiveScores();
-
   return (
     <div className={`${bengaliFont.variable} ${inter.variable} ${oswald.variable} font-bengali min-h-screen flex flex-col`}>
       <ThemeProvider>
-        {/* Sticky live scores ticker bar */}
-        <LiveScoreTicker locale={params.locale} initialMatches={liveMatches} />
-
         {/* Main Top Header */}
         <Header locale={params.locale} />
 

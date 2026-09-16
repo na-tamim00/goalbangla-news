@@ -48,6 +48,7 @@ export interface PostData {
 export interface UserRecord {
   id: string;
   email: string;
+  username?: string;
   passwordHash: string;
   name: string;
   role: Role;

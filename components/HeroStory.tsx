@@ -27,7 +27,7 @@ export default function HeroStory({ post, locale }: HeroStoryProps) {
         <div className="relative h-[420px] sm:h-[500px] lg:h-[560px] w-full overflow-hidden">
           {/* Background Image */}
           <Image
-            src={post.featuredImage || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80'}
+            src={post.featuredImage || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80'}
             alt={title}
             fill
             priority

@@ -65,7 +65,7 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
   // Gallery fields
   const [galleryImages, setGalleryImages] = useState(
     initialData?.galleryImages || [
-      { url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80', captionBn: '', captionEn: '' },
+      { url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80', captionBn: '', captionEn: '' },
     ]
   );
 
@@ -163,8 +163,8 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
         audioShowNotes,
         galleryImages,
         authorId: currentUser.role === 'CONTRIBUTOR' ? currentUser.id : authorId,
-        authorName: currentUser.role === 'CONTRIBUTOR' ? currentUser.name : authorName,
-        authorTitle: currentUser.role === 'CONTRIBUTOR' ? currentUser.displayTitle : authorTitle,
+        authorName: (authorName || currentUser.name || '').trim(),
+        authorTitle: (authorTitle || currentUser.displayTitle || '').trim(),
         scheduledPublishAt: finalStatus === 'SCHEDULED' ? scheduledPublishAt : undefined,
         translations: {
           bn: {
@@ -575,30 +575,63 @@ export default function PostEditor({ initialData, isEditing = false }: PostEdito
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <select
-                  value={authorId}
-                  onChange={(e) => handleAuthorChange(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 text-xs text-white font-bold focus:outline-none focus:border-brand-500"
-                >
-                  {authorsList.length > 0 ? (
-                    authorsList.map((author) => (
-                      <option key={author.id} value={author.id}>
-                        {author.name} {author.displayTitle ? `• ${author.displayTitle}` : `(${author.role})`}
-                      </option>
-                    ))
-                  ) : (
-                    <option value={authorId}>{authorName || 'Current Author'}</option>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-400 mb-1">
+                    Select Registered Author
+                  </label>
+                  <select
+                    value={authorId}
+                    onChange={(e) => handleAuthorChange(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-xs text-white font-bold focus:outline-none focus:border-brand-500"
+                  >
+                    {authorsList.length > 0 ? (
+                      authorsList.map((author) => (
+                        <option key={author.id} value={author.id}>
+                          {author.name} {author.displayTitle ? `• ${author.displayTitle}` : `(${author.role})`}
+                        </option>
+                      ))
+                    ) : (
+                      <option value={authorId}>{authorName || currentUser.name}</option>
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-400 mb-1">
+                    Publisher / Author Name (প্রকাশকের নাম) *
+                  </label>
+                  <input
+                    type="text"
+                    value={authorName}
+                    onChange={(e) => setAuthorName(e.target.value)}
+                    placeholder="e.g. Md Habibur Rahman Khan"
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-xs text-white font-bold focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-400 mb-1">
+                    Publisher Title / Byline (পদবী / বাইলাইন)
+                  </label>
+                  <input
+                    type="text"
+                    value={authorTitle}
+                    onChange={(e) => setAuthorTitle(e.target.value)}
+                    placeholder="e.g. Chief Editor & Super Admin"
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+
+                <div className="p-2.5 bg-zinc-950/90 rounded-lg border border-zinc-800 text-[11px] text-zinc-400">
+                  <span className="text-zinc-500 block text-[10px] uppercase font-bold tracking-wider mb-0.5">
+                    Live Byline Preview:
+                  </span>
+                  <span className="font-bold text-white">{authorName || currentUser.name}</span>
+                  {authorTitle && (
+                    <span className="text-brand-400 ml-1">({authorTitle})</span>
                   )}
-                </select>
-                {authorTitle && (
-                  <p className="text-[10px] text-brand-400 font-medium">
-                    Byline: <span className="text-zinc-300 font-bold">{authorTitle}</span>
-                  </p>
-                )}
-                <p className="text-[10px] text-zinc-500">
-                  Reassign article attribution to any registered newsroom reporter or contributor.
-                </p>
+                </div>
               </div>
             )}
           </div>

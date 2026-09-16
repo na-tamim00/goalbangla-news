@@ -4,28 +4,33 @@ import { signSessionToken, verifyPassword } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+    const body = await req.json();
+    const identifier = (body.username || body.identifier || body.email || '').trim();
+    const password = (body.password || '').trim();
+
+    if (!identifier || !password) {
+      return NextResponse.json(
+        { error: 'User ID / Username or Email and password are required.' },
+        { status: 400 }
+      );
     }
 
-    const trimmedEmail = email.trim().toLowerCase();
-    const user = await repo.getUserByEmail(trimmedEmail);
+    const user = await repo.getUserByUsernameOrEmail(identifier);
     if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid User ID / Email or Password' }, { status: 401 });
     }
 
     // Real bcrypt password verification
     const isValid = await verifyPassword(password, user.passwordHash);
     if (!isValid) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid User ID / Email or Password' }, { status: 401 });
     }
 
     // Check account verification status
     if (user.status === 'PENDING_VERIFICATION') {
       return NextResponse.json(
         {
-          error: 'Your Gmail address is pending verification. Please enter the 6-digit verification code.',
+          error: 'Your account is pending verification. Please enter the verification code.',
           pendingVerification: true,
           email: user.email,
         },
@@ -36,6 +41,7 @@ export async function POST(req: NextRequest) {
     const authUser = {
       id: user.id,
       email: user.email,
+      username: user.username,
       name: user.name,
       role: user.role,
       displayTitle: user.displayTitle,

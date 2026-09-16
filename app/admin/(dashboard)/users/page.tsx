@@ -26,6 +26,7 @@ import {
 interface UserItem {
   id: string;
   email: string;
+  username?: string;
   name: string;
   role: 'ADMIN' | 'SUB_ADMIN' | 'CONTRIBUTOR';
   displayTitle?: string;
@@ -45,6 +46,7 @@ export default function UsersManagementPage() {
 
   // User form state
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'SUB_ADMIN' | 'CONTRIBUTOR'>('CONTRIBUTOR');
   const [displayTitle, setDisplayTitle] = useState('');
@@ -55,6 +57,7 @@ export default function UsersManagementPage() {
   // Generated Temp Password Modal
   const [createdInfo, setCreatedInfo] = useState<{
     name: string;
+    username?: string;
     email: string;
     tempPassword?: string | null;
     devCode?: string | null;
@@ -100,8 +103,20 @@ export default function UsersManagementPage() {
     setError(null);
     setSuccessMsg(null);
 
-    if (!email.trim().toLowerCase().endsWith('@gmail.com')) {
-      setError('Please provide a valid Gmail address (@gmail.com).');
+    if (!name.trim()) {
+      setError('Please provide the full name.');
+      setSaving(false);
+      return;
+    }
+
+    if (!username.trim() && !email.trim()) {
+      setError('Please provide a User ID / Username or Email.');
+      setSaving(false);
+      return;
+    }
+
+    if (!password.trim()) {
+      setError('Please enter a login password for this account.');
       setSaving(false);
       return;
     }
@@ -111,11 +126,12 @@ export default function UsersManagementPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
-          email,
+          name: name.trim(),
+          username: username.trim().toLowerCase(),
+          email: email.trim().toLowerCase() || `${username.trim().toLowerCase()}@goalbangla.com`,
           role: currentUser.role === 'SUB_ADMIN' ? 'CONTRIBUTOR' : role,
           displayTitle: displayTitle.trim() || undefined,
-          password: password.trim() || undefined,
+          password: password.trim(),
           avatarUrl: avatarUrl || undefined,
         }),
       });
@@ -125,22 +141,19 @@ export default function UsersManagementPage() {
         setUsers([...users, data.user]);
         setCreatedInfo({
           name: data.user.name,
+          username: data.user.username,
           email: data.user.email,
           tempPassword: data.temporaryPassword,
-          devCode: data.devCode,
         });
 
-        if (data.devCode) {
-          setActiveDevAlert({ email: data.user.email, code: data.devCode });
-        }
-
         setName('');
+        setUsername('');
         setEmail('');
         setDisplayTitle('');
         setPassword('');
         setAvatarUrl('');
         setIsAdding(false);
-        setSuccessMsg(`Account created for ${data.user.name}. Verification code dispatched.`);
+        setSuccessMsg(`Account created successfully for ${data.user.name}! User ID: ${data.user.username || data.user.email}. Password: ${data.temporaryPassword}. They can log in immediately.`);
       } else {
         setError(data.error || 'Failed to create user');
       }
@@ -405,15 +418,32 @@ export default function UsersManagementPage() {
 
             <div>
               <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">
-                Gmail Address *
+                User ID / Username *
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  placeholder="e.g. subadmin1 or sports_author"
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-brand-500"
+                />
+                <Key className="w-4 h-4 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              </div>
+              <span className="text-[10px] text-zinc-500 mt-0.5 block">Used to log into the admin panel</span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">
+                Email Address
               </label>
               <div className="relative">
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="user@gmail.com"
+                  placeholder="e.g. user@goalbangla.com"
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-brand-500"
                 />
                 <Mail className="w-4 h-4 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -422,7 +452,7 @@ export default function UsersManagementPage() {
 
             <div>
               <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">
-                Role (System Permissions) *
+                Role (Permissions) *
               </label>
               <select
                 value={currentUser.role === 'SUB_ADMIN' ? 'CONTRIBUTOR' : role}
@@ -431,42 +461,43 @@ export default function UsersManagementPage() {
                 className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500 disabled:opacity-60"
               >
                 {currentUser.role === 'ADMIN' && (
-                  <option value="SUB_ADMIN">SUB_ADMIN (Edit/Publish Any, Media, Create Contributors)</option>
+                  <option value="SUB_ADMIN">Sub-Admin (Manage & Publish Posts, Media, Auto Reports)</option>
                 )}
-                <option value="CONTRIBUTOR">CONTRIBUTOR (Submit own posts to In Review)</option>
+                <option value="CONTRIBUTOR">Author / Contributor (Draft Articles & Submit for Review)</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">
-                Public Byline Title (Display Only)
+                Public Byline Title / Designation
               </label>
               <input
                 type="text"
                 value={displayTitle}
                 onChange={(e) => setDisplayTitle(e.target.value)}
-                placeholder="e.g. Senior Columnist, Tactical Analyst, Author"
+                placeholder="e.g. Senior Sports Correspondent, Chief Analyst, Author"
                 className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-brand-500"
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">
-                Initial Password (Optional)
+                Login Password *
               </label>
               <div className="relative">
                 <input
                   type="text"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Leave empty to auto-generate secure temp password"
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-brand-500"
+                  required
+                  placeholder="Set initial password for this user"
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-brand-500 font-mono"
                 />
                 <Lock className="w-4 h-4 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">
                 Profile Photo / Avatar
               </label>
@@ -491,7 +522,7 @@ export default function UsersManagementPage() {
                 disabled={saving}
                 className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
               >
-                {saving ? 'Creating Account...' : 'Create & Send Code'}
+                {saving ? 'Creating Account...' : 'Create Account & Grant Access'}
               </button>
             </div>
           </form>
@@ -505,7 +536,8 @@ export default function UsersManagementPage() {
             <thead className="bg-zinc-950 border-b border-zinc-800 text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
               <tr>
                 <th className="px-4 py-3">Member</th>
-                <th className="px-4 py-3">Gmail Address</th>
+                <th className="px-4 py-3">User ID</th>
+                <th className="px-4 py-3">Email Address</th>
                 <th className="px-4 py-3">Permission Role</th>
                 <th className="px-4 py-3">Byline Title</th>
                 <th className="px-4 py-3">Status</th>
@@ -515,13 +547,13 @@ export default function UsersManagementPage() {
             <tbody className="divide-y divide-zinc-800 font-medium">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-zinc-500">
                     Loading team accounts...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-zinc-500">
                     No users registered yet.
                   </td>
                 </tr>
@@ -553,6 +585,13 @@ export default function UsersManagementPage() {
                             )}
                           </div>
                         </div>
+                      </td>
+
+                      {/* User ID */}
+                      <td className="px-4 py-3">
+                        <span className="font-mono font-bold text-zinc-200 bg-zinc-950 px-2 py-0.5 rounded border border-zinc-800">
+                          {u.username || '—'}
+                        </span>
                       </td>
 
                       {/* Email */}

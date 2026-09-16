@@ -94,11 +94,6 @@ export default function Footer({ locale }: FooterProps) {
                 {dict.leagues.ucl}
               </Link>
             </li>
-            <li>
-              <Link href={`/${locale}/matches`} className="hover:text-brand-400 transition-colors font-bold text-brand-500">
-                {dict.nav.liveScores} →
-              </Link>
-            </li>
           </ul>
         </div>
 

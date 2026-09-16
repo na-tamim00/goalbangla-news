@@ -52,7 +52,7 @@ export default function NewsGrid({ posts, locale, title }: NewsGridProps) {
             >
               <Link href={`/${locale}/news/${post.slug}`} className="block relative aspect-video w-full overflow-hidden bg-zinc-800">
                 <Image
-                  src={post.featuredImage || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=600&q=80'}
+                  src={post.featuredImage || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=600&q=80'}
                   alt={postTitle}
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-105"

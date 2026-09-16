@@ -14,6 +14,7 @@ const key = new TextEncoder().encode(SECRET_KEY);
 export interface AuthUser {
   id: string;
   email: string;
+  username?: string;
   name: string;
   role: 'ADMIN' | 'SUB_ADMIN' | 'CONTRIBUTOR';
   displayTitle?: string;
@@ -25,6 +26,7 @@ export async function signSessionToken(user: AuthUser): Promise<string> {
   return await new SignJWT({
     id: user.id,
     email: user.email,
+    username: user.username,
     name: user.name,
     role: user.role,
     displayTitle: user.displayTitle,
@@ -43,6 +45,7 @@ export async function verifySessionToken(token: string): Promise<AuthUser | null
     return {
       id: payload.id as string,
       email: payload.email as string,
+      username: payload.username as string | undefined,
       name: payload.name as string,
       role: payload.role as 'ADMIN' | 'SUB_ADMIN' | 'CONTRIBUTOR',
       displayTitle: payload.displayTitle as string | undefined,

@@ -169,9 +169,12 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           <div className="flex items-center gap-2 text-zinc-800 dark:text-zinc-200 font-bold">
             <User className="w-4 h-4 text-brand-500 shrink-0" />
             <span>
-              {dict.common.byAuthor} {post.authorName || 'GoalBangla Reporter'}
+              {locale === 'bn' ? 'প্রতিবেদক ও প্রকাশক:' : 'Published by:'}{' '}
+              <span className="text-zinc-950 dark:text-white font-extrabold">{post.authorName || 'GoalBangla News Desk'}</span>
               {post.authorTitle && (
-                <span className="text-zinc-500 font-normal ml-1">({post.authorTitle})</span>
+                <span className="text-brand-600 dark:text-brand-400 font-medium ml-1.5 px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-[11px]">
+                  {post.authorTitle}
+                </span>
               )}
             </span>
           </div>
@@ -344,6 +347,32 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         </div>
       )}
 
+      {/* Editorial Author & Publisher Attribution Box */}
+      <div className="my-8 p-5 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-sm">
+        <div className="w-14 h-14 rounded-full bg-brand-600/10 dark:bg-brand-600/20 border-2 border-brand-500 flex items-center justify-center text-brand-600 dark:text-brand-400 font-black text-xl shrink-0">
+          {(post.authorName || 'G').charAt(0)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider">
+              {locale === 'bn' ? 'লেখক ও প্রকাশক' : 'Author & Publisher'}
+            </span>
+            <span className="text-zinc-400 dark:text-zinc-600">•</span>
+            <span className="text-[11px] text-zinc-500 font-medium">GoalBangla Editorial Desk</span>
+          </div>
+          <h3 className="font-headline font-bold text-lg text-zinc-950 dark:text-white leading-snug">
+            {post.authorName || 'Md Habibur Rahman Khan'}
+          </h3>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 font-medium">
+            {post.authorTitle || (locale === 'bn' ? 'প্রধান সম্পাদক ও ফুটবল বিশ্লেষক' : 'Chief Football Editor & Analyst')}
+          </p>
+        </div>
+        <div className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5 bg-white dark:bg-zinc-950 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 shrink-0 font-medium">
+          <Clock className="w-3.5 h-3.5 text-brand-500" />
+          <span>{publishedDate}</span>
+        </div>
+      </div>
+
       {/* Bottom Share Buttons */}
       <div className="pt-2">
         <SocialShare title={trans.title} url={articleUrl} locale={locale} />
@@ -367,7 +396,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                 >
                   <div className="relative aspect-video w-full bg-zinc-800">
                     <Image
-                      src={rel.featuredImage || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=400&q=80'}
+                      src={rel.featuredImage || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=400&q=80'}
                       alt={relTrans.title}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-500"

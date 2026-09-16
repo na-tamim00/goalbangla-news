@@ -16,6 +16,7 @@ export async function GET() {
     const sanitized = users.map((u) => ({
       id: u.id,
       email: u.email,
+      username: u.username,
       name: u.name,
       role: u.role,
       displayTitle: u.displayTitle || 'Newsroom Contributor',
@@ -39,29 +40,25 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { email, name, role = 'CONTRIBUTOR', displayTitle, password, avatarUrl } = body;
+    const { username, email, name, role = 'CONTRIBUTOR', displayTitle, password, avatarUrl } = body;
 
     const trimmedName = (name || '').trim();
     const trimmedEmail = (email || '').trim().toLowerCase();
+    const trimmedUsername = (username || '').trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
 
-    if (!trimmedName || !trimmedEmail) {
-      return NextResponse.json({ error: 'Name and Gmail address are required.' }, { status: 400 });
+    if (!trimmedName || (!trimmedEmail && !trimmedUsername)) {
+      return NextResponse.json({ error: 'Name, User ID (username), and email are required.' }, { status: 400 });
     }
 
-    // Gmail format validation
-    if (!trimmedEmail.endsWith('@gmail.com')) {
-      return NextResponse.json(
-        { error: 'A valid Gmail address (@gmail.com) is required for account creation.' },
-        { status: 400 }
-      );
-    }
+    const effectiveEmail = trimmedEmail || `${trimmedUsername}@goalbangla.com`;
+    const effectiveUsername = trimmedUsername || trimmedEmail.split('@')[0];
 
     // Hierarchical role validation
     if (user.role === 'SUB_ADMIN') {
       // Sub-Admins are strictly limited to creating Contributor accounts
       if (role === 'SUB_ADMIN' || role === 'ADMIN') {
         return NextResponse.json(
-          { error: 'Forbidden: Sub-Admins are only permitted to create Contributor accounts.' },
+          { error: 'Forbidden: Sub-Admins are only permitted to create Author / Contributor accounts.' },
           { status: 403 }
         );
       }
@@ -77,28 +74,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const existing = await repo.getUserByEmail(trimmedEmail);
-    if (existing) {
-      return NextResponse.json({ error: 'A user with this Gmail address already exists.' }, { status: 409 });
+    const existingByEmail = await repo.getUserByEmail(effectiveEmail);
+    if (existingByEmail) {
+      return NextResponse.json({ error: 'A user with this email already exists.' }, { status: 409 });
     }
 
-    // Check if email delivery is configured in deployed production
-    const isDeployedProduction =
-      Boolean(process.env.VERCEL) ||
-      process.env.NETLIFY === 'true' ||
-      process.env.RESEND_STRICT_PROD === 'true';
-
-    if (isDeployedProduction && !emailService.isConfigured()) {
-      return NextResponse.json(
-        {
-          error:
-            'Transactional email is not configured (missing RESEND_API_KEY). Please configure RESEND_API_KEY before creating accounts.',
-        },
-        { status: 400 }
-      );
+    const existingByUsername = await repo.getUserByUsername(effectiveUsername);
+    if (existingByUsername) {
+      return NextResponse.json({ error: 'A user with this User ID / Username already exists.' }, { status: 409 });
     }
 
-    // Password handling: creator specified or auto-generate secure temporary password
+    // Password handling: creator specified or auto-generate
     let finalPassword = password ? password.trim() : '';
     let isTempPassword = false;
     if (!finalPassword) {
@@ -109,17 +95,12 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordHash = await hashPassword(finalPassword);
-
-    // Generate 6-digit numeric verification code
-    const verificationCode = generate6DigitCode();
-    const codeHash = await hashCode(verificationCode);
-    const codeExpiry = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-
     const id = `user-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
     const newUser = await repo.createUser({
       id,
-      email: trimmedEmail,
+      email: effectiveEmail,
+      username: effectiveUsername,
       name: trimmedName,
       role: role as any,
       displayTitle: (displayTitle || '').trim() || (role === 'SUB_ADMIN' ? 'Associate Editor' : 'Contributing Author'),
@@ -127,26 +108,31 @@ export async function POST(req: NextRequest) {
       avatarUrl:
         avatarUrl ||
         `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80`,
-      status: 'PENDING_VERIFICATION',
-      verificationCodeHash: codeHash,
-      verificationExpiresAt: codeExpiry,
-      verificationAttempts: 0,
-      mustChangePassword: isTempPassword,
+      status: 'ACTIVE',
+      mustChangePassword: false,
       createdAt: new Date().toISOString(),
     });
 
-    // Send transactional verification code email
-    const emailResult = await emailService.sendVerificationCode({
-      to: trimmedEmail,
-      code: verificationCode,
-      recipientName: trimmedName,
-    });
+    // Optionally attempt sending email if service configured, but do not block
+    let devCode: string | null = null;
+    try {
+      if (emailService.isConfigured()) {
+        await emailService.sendVerificationCode({
+          to: effectiveEmail,
+          code: '123456',
+          recipientName: trimmedName,
+        });
+      }
+    } catch (e) {
+      // non-blocking
+    }
 
     return NextResponse.json(
       {
         user: {
           id: newUser.id,
           email: newUser.email,
+          username: newUser.username,
           name: newUser.name,
           role: newUser.role,
           displayTitle: newUser.displayTitle,
@@ -154,8 +140,7 @@ export async function POST(req: NextRequest) {
           status: newUser.status,
           createdAt: newUser.createdAt,
         },
-        temporaryPassword: isTempPassword ? finalPassword : null,
-        devCode: emailResult.devCode,
+        temporaryPassword: finalPassword,
         success: true,
       },
       { status: 201 }

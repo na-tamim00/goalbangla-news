@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { repo } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
 
@@ -81,8 +82,8 @@ export async function POST(req: NextRequest) {
     // Role-based permission checks
     let targetStatus = status;
     let targetAuthorId = user.id;
-    let targetAuthorName = user.name;
-    let targetAuthorTitle = user.displayTitle || 'Contributing Author';
+    let targetAuthorName = (body.authorName || user.name || '').trim();
+    let targetAuthorTitle = (body.authorTitle || user.displayTitle || 'Contributing Author').trim();
 
     if (user.role === 'CONTRIBUTOR') {
       // Contributor cannot publish directly
@@ -97,14 +98,14 @@ export async function POST(req: NextRequest) {
       targetAuthorName = user.name;
       targetAuthorTitle = user.displayTitle || 'Contributing Author';
     } else {
-      // Admin or Sub-Admin can reassign author
+      // Admin or Sub-Admin can attribute or reassign author
       if (authorId) {
         const allUsers = await repo.getAllUsers();
         const assigned = allUsers.find((u) => u.id === authorId);
         if (assigned) {
           targetAuthorId = assigned.id;
-          targetAuthorName = assigned.name;
-          targetAuthorTitle = assigned.displayTitle || body.authorTitle || 'Contributing Author';
+          targetAuthorName = (body.authorName || assigned.name || '').trim();
+          targetAuthorTitle = (body.authorTitle || assigned.displayTitle || 'Contributing Author').trim();
         }
       }
     }
@@ -141,6 +142,18 @@ export async function POST(req: NextRequest) {
         },
       },
     });
+
+    // Revalidate frontend caches so published articles appear immediately
+    try {
+      revalidatePath('/', 'layout');
+      revalidatePath('/[locale]', 'layout');
+      revalidatePath('/bn');
+      revalidatePath('/en');
+      revalidatePath(`/bn/news/${newPost.slug}`);
+      revalidatePath(`/en/news/${newPost.slug}`);
+    } catch (e) {
+      // ignore
+    }
 
     return NextResponse.json({ post: newPost, success: true }, { status: 201 });
   } catch (err: any) {

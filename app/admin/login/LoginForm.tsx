@@ -3,11 +3,11 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, ArrowRight, AlertCircle, ShieldAlert } from 'lucide-react';
+import { Lock, User, ArrowRight, AlertCircle, Shield } from 'lucide-react';
 
 export default function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export default function LoginForm() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ identifier, password }),
       });
 
       const data = await res.json();
@@ -30,8 +30,7 @@ export default function LoginForm() {
         router.push('/admin/posts');
       } else {
         if (data.pendingVerification) {
-          // Redirect to verification screen
-          router.push(`/admin/verify-email?email=${encodeURIComponent(email)}`);
+          router.push(`/admin/verify-email?email=${encodeURIComponent(identifier)}`);
           return;
         }
         setError(data.error || 'Invalid credentials');
@@ -53,7 +52,7 @@ export default function LoginForm() {
           Editorial CMS Portal
         </h2>
         <p className="mt-1 text-xs text-zinc-400">
-          Sign in with your newsroom credentials to manage articles, matches, and live media
+          Enter your authorized User ID and Password to sign in
         </p>
       </div>
 
@@ -69,18 +68,20 @@ export default function LoginForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">
-                Newsroom Gmail Address
+                User ID / Username
               </label>
               <div className="relative">
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
-                  placeholder="editor@gmail.com"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  placeholder="Enter your User ID"
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-10 pr-3 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-brand-500"
                 />
-                <Mail className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <User className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
@@ -111,13 +112,15 @@ export default function LoginForm() {
             </button>
           </form>
 
-          <div className="pt-3 border-t border-zinc-800 text-center">
-            <span className="text-[11px] text-zinc-500">
-              Need email verification?{' '}
-              <a href="/admin/verify-email" className="text-brand-400 hover:underline">
-                Enter verification code
-              </a>
-            </span>
+          {/* Secure Access Notice */}
+          <div className="pt-2 border-t border-zinc-800 text-center">
+            <div className="flex items-center justify-center gap-1.5 text-zinc-400 text-xs">
+              <Shield className="w-3.5 h-3.5 text-brand-400" />
+              <span>Protected Newsroom System</span>
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-1">
+              Authorized newsroom personnel only. All access attempts are logged.
+            </p>
           </div>
         </div>
       </div>

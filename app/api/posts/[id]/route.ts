@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { repo } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
 
@@ -62,14 +63,20 @@ export async function PUT(
       delete body.authorName;
       delete body.authorTitle;
     } else {
-      // Admin or Sub-Admin can reassign author
+      // Admin or Sub-Admin can attribute or reassign author
+      if (body.authorName) {
+        body.authorName = body.authorName.trim();
+      }
+      if (body.authorTitle) {
+        body.authorTitle = body.authorTitle.trim();
+      }
       if (body.authorId && body.authorId !== post.authorId) {
         const allUsers = await repo.getAllUsers();
         const assigned = allUsers.find((u) => u.id === body.authorId);
         if (assigned) {
           body.authorId = assigned.id;
-          body.authorName = assigned.name;
-          body.authorTitle = assigned.displayTitle || body.authorTitle;
+          body.authorName = (body.authorName || assigned.name || '').trim();
+          body.authorTitle = (body.authorTitle || assigned.displayTitle || 'Contributing Author').trim();
         }
       }
     }
@@ -80,6 +87,24 @@ export async function PUT(
     }
 
     const updated = await repo.updatePost(params.id, body);
+
+    try {
+      revalidatePath('/', 'layout');
+      revalidatePath('/[locale]', 'layout');
+      revalidatePath('/bn');
+      revalidatePath('/en');
+      if (post.slug) {
+        revalidatePath(`/bn/news/${post.slug}`);
+        revalidatePath(`/en/news/${post.slug}`);
+      }
+      if (updated?.slug && updated.slug !== post.slug) {
+        revalidatePath(`/bn/news/${updated.slug}`);
+        revalidatePath(`/en/news/${updated.slug}`);
+      }
+    } catch (e) {
+      // non-blocking
+    }
+
     return NextResponse.json({ post: updated, success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
@@ -110,6 +135,20 @@ export async function DELETE(
     }
 
     await repo.deletePost(params.id);
+
+    try {
+      revalidatePath('/', 'layout');
+      revalidatePath('/[locale]', 'layout');
+      revalidatePath('/bn');
+      revalidatePath('/en');
+      if (post.slug) {
+        revalidatePath(`/bn/news/${post.slug}`);
+        revalidatePath(`/en/news/${post.slug}`);
+      }
+    } catch (e) {
+      // non-blocking
+    }
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
